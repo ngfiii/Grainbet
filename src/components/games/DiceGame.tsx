@@ -33,7 +33,6 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
     if (betAmount > balance) return;
     
     setIsRolling(true);
-    setResult(null);
     setLastWin(null);
     
     // Deduct bet
@@ -62,43 +61,16 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
     return won ? 'bg-green-400' : 'bg-red-400';
   };
 
+  const getDisplayNumber = () => {
+    return result !== null ? result : target[0];
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-2xl">
         <h2 className="text-3xl font-bold text-yellow-400 mb-6 text-center font-mono">🎮 Dice</h2>
         
-        {/* Sliding Hexagon Indicator */}
-        <div className="mb-8 relative">
-          <div className="h-20 relative">
-            {/* Connecting Line */}
-            {result !== null && (
-              <div 
-                className="absolute top-12 w-0.5 h-8 bg-gray-400/30 transition-all duration-150 ease-out"
-                style={{ 
-                  left: `${result}%`,
-                  transform: 'translateX(-50%)'
-                }}
-              />
-            )}
-            
-            {/* Sliding Hexagon */}
-            <div 
-              className={`absolute top-0 w-16 h-16 transform rotate-45 flex items-center justify-center shadow-lg transition-all duration-150 ease-out ${getResultColor()}`}
-              style={{ 
-                left: result !== null ? `${result}%` : `${target[0]}%`,
-                transform: 'translateX(-50%) rotate(45deg)'
-              }}
-            >
-              <div className="transform -rotate-45">
-                <span className="text-lg font-bold text-black font-mono">
-                  {result !== null ? result.toFixed(1) : target[0].toFixed(1)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Bet Amount */}
+        {/* Bet Amount - Moved to top */}
         <div className="mb-6">
           <label className="block text-sm font-medium mb-2 font-mono">Bet Amount (min: 10)</label>
           <Input
@@ -110,7 +82,35 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
           />
         </div>
 
-        {/* Enhanced Slider with More Space */}
+        {/* Hexagon Indicator with connecting line */}
+        <div className="mb-8 relative">
+          <div className="h-24 relative">
+            {/* Faded Connecting Line */}
+            <div 
+              className="absolute top-16 w-0.5 h-8 bg-gray-400/20 transition-all duration-150 ease-out"
+              style={{ 
+                left: `${getDisplayNumber()}%`,
+                transform: 'translateX(-50%)'
+              }}
+            />
+            
+            {/* Proper 6-sided Hexagon */}
+            <div 
+              className={`absolute top-0 w-12 h-12 flex items-center justify-center shadow-lg transition-all duration-150 ease-out ${getResultColor()}`}
+              style={{ 
+                left: `${getDisplayNumber()}%`,
+                transform: 'translateX(-50%)',
+                clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)'
+              }}
+            >
+              <span className="text-sm font-bold text-black font-mono">
+                {getDisplayNumber().toFixed(1)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Enhanced Slider with better spacing */}
         <div className="mb-6">
           <label className="block text-sm font-medium mb-4 font-mono">
             Target: {target[0].toFixed(1)}
@@ -123,7 +123,7 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
               
               {/* Target Range Visualization */}
               <div 
-                className={`absolute top-0 h-full transition-all duration-300 ${
+                className={`absolute top-0 h-full transition-all duration-200 ${
                   isOver ? 'bg-green-500/40' : 'bg-red-500/40'
                 } border-l-2 border-r-2 ${
                   isOver ? 'border-green-400' : 'border-red-400'
@@ -136,16 +136,20 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
               
               {/* Target Line */}
               <div 
-                className="absolute top-0 w-1 h-full bg-yellow-400 shadow-lg transition-all duration-300"
+                className="absolute top-0 w-1 h-full bg-yellow-400 shadow-lg transition-all duration-200"
                 style={{ left: `${target[0]}%` }}
               />
               
-              {/* Number markers with more spacing */}
-              <div className="absolute bottom-2 left-3 text-sm text-white font-mono font-bold">0</div>
-              <div className="absolute bottom-2 left-1/4 transform -translate-x-1/2 text-sm text-white font-mono font-bold">25</div>
-              <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-sm text-white font-mono font-bold">50</div>
-              <div className="absolute bottom-2 left-3/4 transform -translate-x-1/2 text-sm text-white font-mono font-bold">75</div>
-              <div className="absolute bottom-2 right-3 text-sm text-white font-mono font-bold">100</div>
+              {/* More number markers for better spacing */}
+              <div className="absolute bottom-2 left-2 text-xs text-white font-mono font-bold">0</div>
+              <div className="absolute bottom-2 left-[12.5%] transform -translate-x-1/2 text-xs text-white font-mono font-bold">12.5</div>
+              <div className="absolute bottom-2 left-1/4 transform -translate-x-1/2 text-xs text-white font-mono font-bold">25</div>
+              <div className="absolute bottom-2 left-[37.5%] transform -translate-x-1/2 text-xs text-white font-mono font-bold">37.5</div>
+              <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-xs text-white font-mono font-bold">50</div>
+              <div className="absolute bottom-2 left-[62.5%] transform -translate-x-1/2 text-xs text-white font-mono font-bold">62.5</div>
+              <div className="absolute bottom-2 left-3/4 transform -translate-x-1/2 text-xs text-white font-mono font-bold">75</div>
+              <div className="absolute bottom-2 left-[87.5%] transform -translate-x-1/2 text-xs text-white font-bold">87.5</div>
+              <div className="absolute bottom-2 right-2 text-xs text-white font-mono font-bold">100</div>
             </div>
             
             <div className="mt-6">
@@ -155,7 +159,7 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
                 max={99}
                 min={1}
                 step={0.1}
-                className="slider-enhanced"
+                className="slider-enhanced cursor-pointer"
               />
             </div>
           </div>
@@ -167,7 +171,7 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
             onClick={() => setIsOver(false)}
             variant={!isOver ? "default" : "outline"}
             className={`flex-1 transition-all duration-200 font-mono ${
-              !isOver ? 'bg-red-500 hover:bg-red-600 text-black font-bold' : 'hover:bg-gray-700 text-black'
+              !isOver ? 'bg-red-500 hover:bg-red-600 text-black font-bold' : 'hover:bg-gray-700'
             }`}
           >
             <span className="text-black">Under {target[0].toFixed(1)}</span>
@@ -176,7 +180,7 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
             onClick={() => setIsOver(true)}  
             variant={isOver ? "default" : "outline"}
             className={`flex-1 transition-all duration-200 font-mono ${
-              isOver ? 'bg-green-500 hover:bg-green-600 text-black font-bold' : 'hover:bg-gray-700 text-black'
+              isOver ? 'bg-green-500 hover:bg-green-600 text-black font-bold' : 'hover:bg-gray-700'
             }`}
           >
             <span className="text-black">Over {target[0].toFixed(1)}</span>
