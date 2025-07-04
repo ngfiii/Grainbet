@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -9,18 +9,55 @@ interface GameProps {
   onUpdateBalance: (amount: number) => void;
 }
 
+interface Cell {
+  revealed: boolean;
+  isMine: boolean;
+  hasGem: boolean;
+  isAnimating: boolean;
+}
+
 export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
   const [betAmount, setBetAmount] = useState(10);
   const [minesCount, setMinesCount] = useState(3);
-  const [grid, setGrid] = useState<Array<Array<{ revealed: boolean; isMine: boolean; hasGem: boolean }>>>([]);
+  const [grid, setGrid] = useState<Cell[][]>([]);
   const [gameStatus, setGameStatus] = useState<'betting' | 'playing' | 'finished'>('betting');
   const [revealedCount, setRevealedCount] = useState(0);
   const [currentMultiplier, setCurrentMultiplier] = useState(1);
   const [gameResult, setGameResult] = useState('');
 
+  // Initialize empty grid on component mount
+  useEffect(() => {
+    initializeEmptyGrid();
+  }, []);
+
+  // Update multiplier when revealed count or mines count changes
+  useEffect(() => {
+    if (revealedCount > 0) {
+      const newMultiplier = calculateMultiplier(revealedCount, minesCount);
+      setCurrentMultiplier(newMultiplier);
+    }
+  }, [revealedCount, minesCount]);
+
+  const initializeEmptyGrid = () => {
+    const emptyGrid = Array(5).fill(null).map(() =>
+      Array(5).fill(null).map((): Cell => ({ 
+        revealed: false, 
+        isMine: false, 
+        hasGem: false,
+        isAnimating: false
+      }))
+    );
+    setGrid(emptyGrid);
+  };
+
   const initializeGrid = () => {
-    const newGrid = Array(5).fill(null).map(() =>
-      Array(5).fill(null).map(() => ({ revealed: false, isMine: false, hasGem: false }))
+    const newGrid: Cell[][] = Array(5).fill(null).map(() =>
+      Array(5).fill(null).map((): Cell => ({ 
+        revealed: false, 
+        isMine: false, 
+        hasGem: false,
+        isAnimating: false
+      }))
     );
 
     // Place mines randomly
@@ -49,13 +86,15 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   };
 
   const calculateMultiplier = (revealed: number, mines: number) => {
-    const safeSpots = 25 - mines;
     if (revealed === 0) return 1;
     
+    const safeSpots = 25 - mines;
     let multiplier = 1;
+    
     for (let i = 0; i < revealed; i++) {
-      multiplier *= (safeSpots - i) / (25 - mines - i);
+      multiplier *= safeSpots / (safeSpots - i);
     }
+    
     return multiplier;
   };
 
@@ -71,31 +110,47 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     setGameResult('');
   };
 
-  const revealTile = (row: number, col: number) => {
-    if (gameStatus !== 'playing' || grid[row][col].revealed) return;
+  const revealTile = async (row: number, col: number) => {
+    if (gameStatus !== 'playing' || grid[row][col].revealed || grid[row][col].isAnimating) return;
     
+    // Start animation
     const newGrid = [...grid];
+    newGrid[row][col].isAnimating = true;
+    setGrid(newGrid);
+    
+    // Wait for animation
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
     newGrid[row][col].revealed = true;
+    newGrid[row][col].isAnimating = false;
     setGrid(newGrid);
     
     if (newGrid[row][col].isMine) {
       // Hit a mine - game over
       setGameStatus('finished');
-      setGameResult('💣 BOOM! Game Over');
+      setGameResult('💥 BOOM! Game Over');
       
-      // Reveal all mines
-      newGrid.forEach(row => {
-        row.forEach(cell => {
-          if (cell.isMine) cell.revealed = true;
+      // Reveal all mines with staggered animation
+      const minePositions: [number, number][] = [];
+      newGrid.forEach((row, rowIndex) => {
+        row.forEach((cell, colIndex) => {
+          if (cell.isMine) {
+            minePositions.push([rowIndex, colIndex]);
+          }
         });
       });
-      setGrid(newGrid);
+      
+      minePositions.forEach(([mineRow, mineCol], index) => {
+        setTimeout(() => {
+          const updatedGrid = [...grid];
+          updatedGrid[mineRow][mineCol].revealed = true;
+          setGrid([...updatedGrid]);
+        }, index * 150);
+      });
     } else {
       // Found a gem
       const newRevealedCount = revealedCount + 1;
       setRevealedCount(newRevealedCount);
-      const newMultiplier = calculateMultiplier(newRevealedCount, minesCount);
-      setCurrentMultiplier(newMultiplier);
     }
   };
 
@@ -109,7 +164,7 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   };
 
   const newGame = () => {
-    setGrid([]);
+    initializeEmptyGrid();
     setGameStatus('betting');
     setRevealedCount(0);
     setCurrentMultiplier(1);
@@ -118,7 +173,7 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
+      <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-2xl">
         <h2 className="text-3xl font-bold text-yellow-400 mb-6 text-center">💣 Mines</h2>
         
         {gameStatus === 'betting' && (
@@ -129,7 +184,7 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
                 type="number"
                 value={betAmount}
                 onChange={(e) => setBetAmount(Math.max(1, parseInt(e.target.value) || 1))}
-                className="bg-gray-700 border-gray-600 text-white"
+                className="bg-gray-700 border-gray-600 text-white transition-all duration-200 focus:ring-2 focus:ring-yellow-400"
               />
             </div>
             
@@ -141,72 +196,88 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
                 max="20"
                 value={minesCount}
                 onChange={(e) => setMinesCount(Math.max(1, Math.min(20, parseInt(e.target.value) || 3)))}
-                className="bg-gray-700 border-gray-600 text-white"
+                className="bg-gray-700 border-gray-600 text-white transition-all duration-200 focus:ring-2 focus:ring-yellow-400"
               />
             </div>
             
             <Button
               onClick={startGame}
               disabled={betAmount > balance}
-              className="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-bold py-3"
+              className="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-bold py-3 transition-all duration-200 hover:scale-105"
             >
               Start Game ({betAmount} coins)
             </Button>
           </div>
         )}
 
-        {gameStatus !== 'betting' && (
-          <>
-            {/* Game Stats */}
-            <div className="mb-4 text-center">
-              <div className="text-lg">Multiplier: <span className="text-green-400 font-bold">{currentMultiplier.toFixed(2)}x</span></div>
+        {/* Always show grid */}
+        <div className="mb-6">
+          {gameStatus !== 'betting' && (
+            <div className="mb-4 text-center bg-gray-700/50 p-4 rounded-lg">
+              <div className="text-lg">Multiplier: <span className="text-green-400 font-bold animate-pulse">{currentMultiplier.toFixed(2)}x</span></div>
               <div className="text-lg">Potential Win: <span className="text-yellow-400 font-bold">{(betAmount * currentMultiplier).toFixed(0)}</span> coins</div>
               <div className="text-sm text-gray-400">Gems Found: {revealedCount} | Mines: {minesCount}</div>
             </div>
+          )}
 
-            {/* Game Grid */}
-            <div className="grid grid-cols-5 gap-2 mb-4">
-              {grid.map((row, rowIndex) =>
-                row.map((cell, colIndex) => (
-                  <button
-                    key={`${rowIndex}-${colIndex}`}
-                    onClick={() => revealTile(rowIndex, colIndex)}
-                    disabled={gameStatus !== 'playing'}
-                    className={cn(
-                      "aspect-square text-2xl font-bold border-2 rounded-lg transition-all",
-                      cell.revealed
-                        ? cell.isMine
-                          ? "bg-red-600 border-red-500"
-                          : "bg-green-600 border-green-500"
-                        : "bg-gray-700 border-gray-600 hover:bg-gray-600"
-                    )}
-                  >
-                    {cell.revealed ? (cell.isMine ? '💣' : '💎') : ''}
-                  </button>
-                ))
-              )}
-            </div>
-
-            {/* Game Controls */}
-            {gameStatus === 'playing' && revealedCount > 0 && (
-              <Button
-                onClick={cashOut}
-                className="w-full bg-green-600 hover:bg-green-700 mb-4"
-              >
-                Cash Out ({(betAmount * currentMultiplier).toFixed(0)} coins)
-              </Button>
+          {/* Game Grid */}
+          <div className="grid grid-cols-5 gap-3 p-4 bg-gray-900/50 rounded-lg">
+            {grid.map((row, rowIndex) =>
+              row.map((cell, colIndex) => (
+                <button
+                  key={`${rowIndex}-${colIndex}`}
+                  onClick={() => revealTile(rowIndex, colIndex)}
+                  disabled={gameStatus === 'betting' || gameStatus === 'finished' || cell.isAnimating}
+                  className={cn(
+                    "aspect-square text-3xl font-bold border-2 rounded-lg transition-all duration-300 relative overflow-hidden",
+                    cell.isAnimating && "animate-pulse scale-110",
+                    cell.revealed
+                      ? cell.isMine
+                        ? "bg-red-600 border-red-500 shadow-lg shadow-red-500/50"
+                        : "bg-green-600 border-green-500 shadow-lg shadow-green-500/50"
+                      : gameStatus === 'betting'
+                      ? "bg-gray-600 border-gray-500 cursor-not-allowed opacity-50"
+                      : "bg-gray-700 border-gray-600 hover:bg-gray-600 hover:scale-105 cursor-pointer"
+                  )}
+                >
+                  {cell.revealed ? (
+                    cell.isMine ? (
+                      <span className="text-4xl animate-bounce">💣</span>
+                    ) : (
+                      <span className="text-4xl animate-spin-slow">💎</span>
+                    )
+                  ) : cell.isAnimating ? (
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 animate-pulse"></div>
+                  ) : (
+                    ''
+                  )}
+                </button>
+              ))
             )}
+          </div>
+        </div>
 
-            {/* Game Result */}
-            {gameStatus === 'finished' && (
-              <div className="text-center">
-                <div className="text-xl font-bold mb-4">{gameResult}</div>
-                <Button onClick={newGame} className="bg-yellow-600 hover:bg-yellow-700 text-black font-bold">
-                  New Game
-                </Button>
-              </div>
-            )}
-          </>
+        {/* Game Controls */}
+        {gameStatus === 'playing' && revealedCount > 0 && (
+          <Button
+            onClick={cashOut}
+            className="w-full bg-green-600 hover:bg-green-700 mb-4 py-3 transition-all duration-200 hover:scale-105 animate-pulse"
+          >
+            Cash Out ({(betAmount * currentMultiplier).toFixed(0)} coins)
+          </Button>
+        )}
+
+        {/* Game Result */}
+        {gameStatus === 'finished' && (
+          <div className="text-center animate-fade-in">
+            <div className="text-xl font-bold mb-4 animate-bounce">{gameResult}</div>
+            <Button 
+              onClick={newGame} 
+              className="bg-yellow-600 hover:bg-yellow-700 text-black font-bold px-8 py-3 transition-all duration-200 hover:scale-105"
+            >
+              New Game
+            </Button>
+          </div>
         )}
       </div>
     </div>

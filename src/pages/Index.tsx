@@ -22,8 +22,8 @@ const Index = () => {
     setBalance(prev => Math.max(0, prev + amount));
   };
 
-  const addFreeCoins = () => {
-    setBalance(prev => prev + 1000);
+  const addFreeCoins = (amount: number = 1000) => {
+    setBalance(prev => prev + amount);
   };
 
   return (

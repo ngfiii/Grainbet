@@ -67,7 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     "hover:bg-gray-700 hover:scale-105",
                     currentGame === game.id 
                       ? "bg-yellow-600 text-black font-semibold shadow-lg" 
-                      : "text-gray-300"
+                      : "text-gray-300 hover:text-white"
                   )}
                 >
                   <span className="text-xl mr-3">{game.emoji}</span>
