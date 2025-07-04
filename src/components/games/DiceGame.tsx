@@ -56,38 +56,45 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
     setIsRolling(false);
   };
 
+  const getResultColor = () => {
+    if (result === null) return 'bg-yellow-400';
+    const won = isOver ? result > target[0] : result < target[0];
+    return won ? 'bg-green-400' : 'bg-red-400';
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-2xl">
         <h2 className="text-3xl font-bold text-yellow-400 mb-6 text-center font-mono">🎮 Dice</h2>
         
-        {/* Hexagon Number Display */}
-        <div className="mb-6 flex justify-center">
-          <div className="relative">
-            {/* Hexagon */}
-            <div className="w-24 h-24 bg-gradient-to-br from-yellow-400 to-yellow-600 transform rotate-45 flex items-center justify-center shadow-lg">
+        {/* Sliding Hexagon Indicator */}
+        <div className="mb-8 relative">
+          <div className="h-20 relative">
+            {/* Connecting Line */}
+            {result !== null && (
+              <div 
+                className="absolute top-12 w-0.5 h-8 bg-gray-400/30 transition-all duration-150 ease-out"
+                style={{ 
+                  left: `${result}%`,
+                  transform: 'translateX(-50%)'
+                }}
+              />
+            )}
+            
+            {/* Sliding Hexagon */}
+            <div 
+              className={`absolute top-0 w-16 h-16 transform rotate-45 flex items-center justify-center shadow-lg transition-all duration-150 ease-out ${getResultColor()}`}
+              style={{ 
+                left: result !== null ? `${result}%` : `${target[0]}%`,
+                transform: 'translateX(-50%) rotate(45deg)'
+              }}
+            >
               <div className="transform -rotate-45">
-                <span className="text-2xl font-bold text-black font-mono">
-                  {target[0].toFixed(1)}
+                <span className="text-lg font-bold text-black font-mono">
+                  {result !== null ? result.toFixed(1) : target[0].toFixed(1)}
                 </span>
               </div>
             </div>
-            
-            {/* Result indicator with sliding animation */}
-            {result !== null && (
-              <div 
-                className="absolute top-0 w-6 h-6 bg-red-500 rounded-full border-2 border-white transition-all duration-1000 ease-out"
-                style={{ 
-                  left: `${-12 + (result / 100) * 120}px`,
-                  top: '50%',
-                  transform: 'translateY(-50%)'
-                }}
-              >
-                <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs font-bold">
-                  {result.toFixed(1)}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -103,14 +110,14 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
           />
         </div>
 
-        {/* Enhanced Slider */}
+        {/* Enhanced Slider with More Space */}
         <div className="mb-6">
           <label className="block text-sm font-medium mb-4 font-mono">
             Target: {target[0].toFixed(1)}
           </label>
           
-          <div className="relative mb-6">
-            <div className="bg-gray-700/80 h-16 rounded-lg relative overflow-hidden border border-gray-600">
+          <div className="relative mb-8">
+            <div className="bg-gray-700/80 h-20 rounded-lg relative overflow-hidden border border-gray-600">
               {/* Gradient Background */}
               <div className="absolute inset-0 bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 opacity-30"></div>
               
@@ -133,12 +140,15 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
                 style={{ left: `${target[0]}%` }}
               />
               
-              {/* Number markers */}
-              <div className="absolute bottom-1 left-2 text-xs text-white font-mono font-bold">0</div>
-              <div className="absolute bottom-1 right-2 text-xs text-white font-mono font-bold">100</div>
+              {/* Number markers with more spacing */}
+              <div className="absolute bottom-2 left-3 text-sm text-white font-mono font-bold">0</div>
+              <div className="absolute bottom-2 left-1/4 transform -translate-x-1/2 text-sm text-white font-mono font-bold">25</div>
+              <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-sm text-white font-mono font-bold">50</div>
+              <div className="absolute bottom-2 left-3/4 transform -translate-x-1/2 text-sm text-white font-mono font-bold">75</div>
+              <div className="absolute bottom-2 right-3 text-sm text-white font-mono font-bold">100</div>
             </div>
             
-            <div className="mt-4">
+            <div className="mt-6">
               <Slider
                 value={target}
                 onValueChange={setTarget}
@@ -160,7 +170,7 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
               !isOver ? 'bg-red-500 hover:bg-red-600 text-black font-bold' : 'hover:bg-gray-700 text-black'
             }`}
           >
-            Under {target[0].toFixed(1)}
+            <span className="text-black">Under {target[0].toFixed(1)}</span>
           </Button>
           <Button
             onClick={() => setIsOver(true)}  
@@ -169,7 +179,7 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
               isOver ? 'bg-green-500 hover:bg-green-600 text-black font-bold' : 'hover:bg-gray-700 text-black'
             }`}
           >
-            Over {target[0].toFixed(1)}
+            <span className="text-black">Over {target[0].toFixed(1)}</span>
           </Button>
         </div>
 
