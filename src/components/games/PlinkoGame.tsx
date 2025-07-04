@@ -13,14 +13,15 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
   const [riskLevel, setRiskLevel] = useState<'low' | 'medium' | 'high'>('low');
   const [rows, setRows] = useState(8);
   const [isDropping, setIsDropping] = useState(false);
-  const [ballPosition, setBallPosition] = useState<{x: number, y: number} | null>(null);
+  const [ballHistory, setBallHistory] = useState<Array<{x: number, y: number, id: number}>>([]);
   const [lastResult, setLastResult] = useState<{ slot: number; multiplier: number } | null>(null);
   const [lastWin, setLastWin] = useState<number | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationRef = useRef<number>();
 
   // Risk-based multipliers for different row counts
   const getMultipliers = (rows: number, risk: 'low' | 'medium' | 'high') => {
-    const multiplierSets = {
+    const multiplierSets: Record<'low' | 'medium' | 'high', Record<number, number[]>> = {
       low: {
         8: [5.6, 2.1, 1.1, 1, 0.5, 1, 1.1, 2.1, 5.6],
         12: [8.4, 3, 1.9, 1.2, 0.9, 0.7, 0.7, 0.7, 0.9, 1.2, 1.9, 3, 8.4],
@@ -37,7 +38,7 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
         16: [110, 41, 10, 5, 3, 1.5, 1, 0.5, 0.3, 0.5, 1, 1.5, 3, 5, 10, 41, 110]
       }
     };
-    return multiplierSets[risk][rows as keyof typeof multiplierSets[risk]] || multiplierSets[risk][8];
+    return multiplierSets[risk][rows] || multiplierSets[risk][8];
   };
 
   const multipliers = getMultipliers(rows, riskLevel);
@@ -52,25 +53,21 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Set canvas style
     const width = canvas.width;
     const height = canvas.height;
     
-    // Create gradient background
+    // Background gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, '#1a1a2e');
-    gradient.addColorStop(0.5, '#16213e');
+    gradient.addColorStop(0, '#1e293b');
     gradient.addColorStop(1, '#0f172a');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
     
     // Draw pegs
-    const pegRadius = 4;
+    const pegRadius = 6;
     const startY = 60;
     const pegSpacing = (width - 100) / (rows + 1);
     const rowHeight = (height - 200) / rows;
-    
-    ctx.fillStyle = '#64748b';
     
     for (let row = 0; row < rows; row++) {
       const pegsInRow = row + 2;
@@ -80,35 +77,58 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
         const x = startX + peg * pegSpacing;
         const y = startY + row * rowHeight;
         
+        // Peg shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.beginPath();
+        ctx.arc(x + 2, y + 2, pegRadius, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Peg
+        ctx.fillStyle = '#64748b';
         ctx.beginPath();
         ctx.arc(x, y, pegRadius, 0, 2 * Math.PI);
         ctx.fill();
         
-        // Add glow effect
-        ctx.shadowColor = '#64748b';
-        ctx.shadowBlur = 10;
+        // Peg highlight
+        ctx.fillStyle = '#94a3b8';
         ctx.beginPath();
-        ctx.arc(x, y, pegRadius, 0, 2 * Math.PI);
+        ctx.arc(x - 2, y - 2, pegRadius * 0.6, 0, 2 * Math.PI);
         ctx.fill();
-        ctx.shadowBlur = 0;
       }
     }
     
-    // Draw ball if dropping
-    if (ballPosition) {
-      ctx.fillStyle = '#fbbf24';
-      ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 15;
+    // Draw balls
+    ballHistory.forEach(ball => {
+      // Ball shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
       ctx.beginPath();
-      ctx.arc(ballPosition.x, ballPosition.y, 8, 0, 2 * Math.PI);
+      ctx.arc(ball.x + 3, ball.y + 3, 10, 0, 2 * Math.PI);
       ctx.fill();
-      ctx.shadowBlur = 0;
-    }
+      
+      // Ball
+      const ballGradient = ctx.createRadialGradient(ball.x - 3, ball.y - 3, 0, ball.x, ball.y, 10);
+      ballGradient.addColorStop(0, '#fbbf24');
+      ballGradient.addColorStop(1, '#f59e0b');
+      ctx.fillStyle = ballGradient;
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, 10, 0, 2 * Math.PI);
+      ctx.fill();
+    });
   };
 
   useEffect(() => {
-    drawBoard();
-  }, [rows, ballPosition]);
+    const animate = () => {
+      drawBoard();
+      requestAnimationFrame(animate);
+    };
+    animate();
+    
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [rows, ballHistory]);
 
   const dropBall = async () => {
     if (betAmount < 10 || betAmount > balance || isDropping) return;
@@ -117,46 +137,82 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     setIsDropping(true);
     setLastResult(null);
     setLastWin(null);
-    setBallPosition(null);
+    setBallHistory([]);
     
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    // Simulate ball path
-    let x = canvas.width / 2;
+    const ballId = Date.now();
+    let x = canvas.width / 2 + (Math.random() - 0.5) * 20;
     const startY = 30;
-    const endY = canvas.height - 100;
-    const totalSteps = 50;
-    const stepHeight = (endY - startY) / totalSteps;
+    const endY = canvas.height - 80;
     
-    for (let step = 0; step < totalSteps; step++) {
-      await new Promise(resolve => setTimeout(resolve, 30));
+    // Physics simulation
+    let velocityX = 0;
+    let velocityY = 2;
+    let currentY = startY;
+    let currentX = x;
+    
+    const pegSpacing = (canvas.width - 100) / (rows + 1);
+    const rowHeight = (endY - startY) / rows;
+    
+    const animateDrop = () => {
+      currentY += velocityY;
+      currentX += velocityX;
       
-      // Random horizontal movement
-      const randomDirection = (Math.random() - 0.5) * 20;
-      x += randomDirection;
+      // Check for peg collisions
+      const currentRow = Math.floor((currentY - startY) / rowHeight);
+      if (currentRow >= 0 && currentRow < rows) {
+        const pegsInRow = currentRow + 2;
+        const rowStartX = canvas.width / 2 - ((pegsInRow - 1) * pegSpacing) / 2;
+        
+        for (let peg = 0; peg < pegsInRow; peg++) {
+          const pegX = rowStartX + peg * pegSpacing;
+          const pegY = startY + currentRow * rowHeight;
+          
+          const distance = Math.sqrt((currentX - pegX) ** 2 + (currentY - pegY) ** 2);
+          if (distance < 12) {
+            // Bounce off peg
+            velocityX += (Math.random() - 0.5) * 4;
+            velocityX *= 0.8; // Damping
+            break;
+          }
+        }
+      }
       
-      // Keep ball within bounds
-      x = Math.max(50, Math.min(canvas.width - 50, x));
+      // Keep ball in bounds
+      if (currentX < 50) {
+        currentX = 50;
+        velocityX = Math.abs(velocityX);
+      }
+      if (currentX > canvas.width - 50) {
+        currentX = canvas.width - 50;
+        velocityX = -Math.abs(velocityX);
+      }
       
-      const y = startY + step * stepHeight;
-      setBallPosition({ x, y });
-    }
+      setBallHistory([{ x: currentX, y: currentY, id: ballId }]);
+      
+      if (currentY < endY) {
+        animationRef.current = requestAnimationFrame(animateDrop);
+      } else {
+        // Ball landed
+        const slotWidth = (canvas.width - 100) / multipliers.length;
+        const slotIndex = Math.floor((currentX - 50) / slotWidth);
+        const finalSlot = Math.max(0, Math.min(multipliers.length - 1, slotIndex));
+        
+        const multiplier = multipliers[finalSlot];
+        setLastResult({ slot: finalSlot, multiplier });
+        
+        const winAmount = betAmount * multiplier;
+        setLastWin(winAmount);
+        onUpdateBalance(winAmount);
+        
+        setIsDropping(false);
+        setBallHistory([]);
+      }
+    };
     
-    // Determine final slot
-    const slotWidth = (canvas.width - 100) / multipliers.length;
-    const slotIndex = Math.floor((x - 50) / slotWidth);
-    const finalSlot = Math.max(0, Math.min(multipliers.length - 1, slotIndex));
-    
-    const multiplier = multipliers[finalSlot];
-    setLastResult({ slot: finalSlot, multiplier });
-    
-    const winAmount = betAmount * multiplier;
-    setLastWin(winAmount);
-    onUpdateBalance(winAmount);
-    
-    setIsDropping(false);
-    setBallPosition(null);
+    animateDrop();
   };
 
   return (
@@ -237,8 +293,8 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
           <canvas
             ref={canvasRef}
             width={600}
-            height={400}
-            className="w-full border border-gray-600 rounded-lg bg-gradient-to-b from-gray-900 to-gray-800"
+            height={500}
+            className="w-full border border-gray-600 rounded-lg"
           />
         </div>
 
