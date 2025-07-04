@@ -1,4 +1,5 @@
 
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -102,7 +103,13 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'JetBrains Mono', monospace;
   }
+}
+
+/* Font classes */
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
 }
 
 /* Custom animations */
@@ -148,6 +155,17 @@ All colors MUST be HSL.
   }
 }
 
+@keyframes hexagon-slide {
+  from {
+    transform: translateX(-50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 .animate-fade-in {
   animation: fade-in 0.3s ease-out;
 }
@@ -164,7 +182,31 @@ All colors MUST be HSL.
   animation: spin-slow 2s linear infinite;
 }
 
+.animate-hexagon-slide {
+  animation: hexagon-slide 0.5s ease-out;
+}
+
 /* Enhanced slider styling */
 .slider-enhanced .slider-track {
   background: linear-gradient(to right, #10b981, #f59e0b, #ef4444);
+}
+
+/* Hexagon shape for dice display */
+.hexagon {
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  margin: 50px auto;
+  transform: rotate(30deg);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hexagon-content {
+  transform: rotate(-30deg);
+  font-size: 24px;
+  font-weight: bold;
+  color: black;
 }

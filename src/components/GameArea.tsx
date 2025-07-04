@@ -12,25 +12,27 @@ interface GameAreaProps {
   currentGame: Game;
   balance: number;
   onUpdateBalance: (amount: number) => void;
+  onGameSelect: (game: Game) => void;
 }
 
 export const GameArea: React.FC<GameAreaProps> = ({ 
   currentGame, 
   balance, 
-  onUpdateBalance 
+  onUpdateBalance,
+  onGameSelect 
 }) => {
   const renderGame = () => {
     const gameProps = { balance, onUpdateBalance };
     
     switch (currentGame) {
-      case 'dashboard': return <DashboardGame {...gameProps} />;
+      case 'dashboard': return <DashboardGame {...gameProps} onGameSelect={onGameSelect} />;
       case 'dice': return <DiceGame {...gameProps} />;
       case 'limbo': return <LimboGame {...gameProps} />;
       case 'blackjack': return <BlackjackGame {...gameProps} />;
       case 'mines': return <MinesGame {...gameProps} />;
       case 'keno': return <KenoGame {...gameProps} />;
       case 'plinko': return <PlinkoGame {...gameProps} />;
-      default: return <DashboardGame {...gameProps} />;
+      default: return <DashboardGame {...gameProps} onGameSelect={onGameSelect} />;
     }
   };
 

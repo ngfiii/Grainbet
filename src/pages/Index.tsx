@@ -22,8 +22,12 @@ const Index = () => {
     setBalance(prev => Math.max(0, prev + amount));
   };
 
-  const addFreeCoins = (amount: number = 1000) => {
-    setBalance(prev => prev + amount);
+  const addCoins = (amount: number) => {
+    setBalance(prev => Math.min(6900, prev + amount));
+  };
+
+  const deductCoins = (amount: number) => {
+    setBalance(prev => Math.max(0, prev - amount));
   };
 
   return (
@@ -38,13 +42,15 @@ const Index = () => {
       <div className="flex-1 flex flex-col">
         <TopBar 
           balance={balance}
-          onAddCoins={addFreeCoins}
+          onAddCoins={addCoins}
+          onDeductCoins={deductCoins}
         />
         
         <GameArea 
           currentGame={currentGame}
           balance={balance}
           onUpdateBalance={updateBalance}
+          onGameSelect={setCurrentGame}
         />
       </div>
     </div>
