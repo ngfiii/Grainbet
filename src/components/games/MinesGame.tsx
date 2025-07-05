@@ -30,7 +30,7 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     initializeEmptyGrid();
   }, []);
 
-  // Update multiplier when revealed count or mines count changes
+  // Update multiplier when revealed count or mines count changes - using proper formula
   useEffect(() => {
     if (revealedCount > 0) {
       const newMultiplier = calculateMultiplier(revealedCount, minesCount);
@@ -85,36 +85,28 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     return newGrid;
   };
 
-  const calculateMultiplier = (revealed: number, mines: number) => {
-    if (revealed === 0) return 1;
+  // Proper Rainbet-style multiplier calculation
+  const calculateMultiplier = (safeClicks: number, mines: number) => {
+    if (safeClicks === 0) return 1;
     
     const totalTiles = 25;
     const safeTiles = totalTiles - mines;
     const houseEdge = 0.01; // 1% house edge
     
-    // Calculate probability-based multiplier
-    let multiplier = 1;
-    for (let i = 0; i < revealed; i++) {
-      const remainingSafe = safeTiles - i;
-      const remainingTotal = totalTiles - i;
-      const probability = remainingSafe / remainingTotal;
-      multiplier *= (1 / probability);
+    // Calculate survival probability for each click
+    let totalSurvivalProbability = 1;
+    
+    for (let click = 0; click < safeClicks; click++) {
+      const safeTilesRemaining = safeTiles - click;
+      const totalTilesRemaining = totalTiles - click;
+      const survivalProbability = safeTilesRemaining / totalTilesRemaining;
+      totalSurvivalProbability *= survivalProbability;
     }
     
-    // Apply house edge
-    multiplier *= (1 - houseEdge);
+    // Final multiplier = inverse of total odds × (1 - house edge)
+    const multiplier = (1 / totalSurvivalProbability) * (1 - houseEdge);
     
-    // Cap based on number of mines for balance
-    const maxMultipliers = {
-      1: 24,
-      2: 50, 
-      3: 100,
-      4: 200,
-      5: 400
-    };
-    
-    const maxMult = maxMultipliers[mines as keyof typeof maxMultipliers] || 1000;
-    return Math.min(multiplier, maxMult);
+    return multiplier;
   };
 
   const startGame = () => {
@@ -176,9 +168,8 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   const cashOut = () => {
     if (gameStatus !== 'playing') return;
     
-    const totalPayout = betAmount * currentMultiplier;
-    const profit = totalPayout - betAmount;
-    onUpdateBalance(totalPayout); // Return original bet + profit
+    const profit = betAmount * (currentMultiplier - 1); // Only the profit
+    onUpdateBalance(profit); // Only add the profit
     setGameStatus('finished');
     setGameResult(`🎉 Cashed out for ${profit.toFixed(0)} coins profit!`);
   };

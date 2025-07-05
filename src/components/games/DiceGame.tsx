@@ -54,7 +54,7 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
       const multiplier = calculateMultiplier();
       const profit = betAmount * (multiplier - 1); // Only the profit part
       setLastWin(profit);
-      onUpdateBalance(betAmount + profit); // Return original bet + profit
+      onUpdateBalance(profit); // Only add the profit, don't return the original bet
     }
     
     setIsRolling(false);

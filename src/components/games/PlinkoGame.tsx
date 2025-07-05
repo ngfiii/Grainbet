@@ -55,7 +55,7 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     const width = canvas.width;
-    const height = canvas.height - 60; // Adjusted for multiplier slots
+    const height = canvas.height - 80; // Space for multiplier slots at bottom
     
     // Background gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
@@ -65,13 +65,14 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     ctx.fillRect(0, 0, width, height);
     
     // Draw pegs
-    const pegRadius = 6;
+    const pegRadius = 4;
     const startY = 60;
-    const pegSpacing = (width - 100) / (rows + 1);
-    const rowHeight = (height - 120) / rows; // Adjusted for multiplier slots
+    const rowHeight = (height - 120) / rows;
+    const slotWidth = (width - 80) / multipliers.length;
     
     for (let row = 0; row < rows; row++) {
       const pegsInRow = row + 2;
+      const pegSpacing = slotWidth;
       const startX = width / 2 - ((pegsInRow - 1) * pegSpacing) / 2;
       
       for (let peg = 0; peg < pegsInRow; peg++) {
@@ -93,9 +94,20 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
         // Peg highlight
         ctx.fillStyle = '#94a3b8';
         ctx.beginPath();
-        ctx.arc(x - 2, y - 2, pegRadius * 0.6, 0, 2 * Math.PI);
+        ctx.arc(x - 1, y - 1, pegRadius * 0.6, 0, 2 * Math.PI);
         ctx.fill();
       }
+    }
+    
+    // Draw slot dividers at the bottom
+    ctx.strokeStyle = '#374151';
+    ctx.lineWidth = 2;
+    for (let i = 0; i <= multipliers.length; i++) {
+      const x = 40 + i * slotWidth;
+      ctx.beginPath();
+      ctx.moveTo(x, height - 40);
+      ctx.lineTo(x, height);
+      ctx.stroke();
     }
     
     // Draw balls
@@ -103,23 +115,23 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
       // Ball shadow
       ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
       ctx.beginPath();
-      ctx.arc(ball.x + 3, ball.y + 3, 10, 0, 2 * Math.PI);
+      ctx.arc(ball.x + 2, ball.y + 2, 8, 0, 2 * Math.PI);
       ctx.fill();
       
       // Ball
-      const ballGradient = ctx.createRadialGradient(ball.x - 3, ball.y - 3, 0, ball.x, ball.y, 10);
+      const ballGradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 0, ball.x, ball.y, 8);
       ballGradient.addColorStop(0, '#fbbf24');
       ballGradient.addColorStop(1, '#f59e0b');
       ctx.fillStyle = ballGradient;
       ctx.beginPath();
-      ctx.arc(ball.x, ball.y, 10, 0, 2 * Math.PI);
+      ctx.arc(ball.x, ball.y, 8, 0, 2 * Math.PI);
       ctx.fill();
     });
   };
 
   useEffect(() => {
     drawBoard();
-  }, [rows, ballHistory]);
+  }, [rows, ballHistory, multipliers]);
 
   const dropBall = async () => {
     if (betAmount < 10 || betAmount > balance || isDropping) return;
@@ -137,36 +149,26 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     const ballId = Date.now();
     let x = canvas.width / 2 + (Math.random() - 0.5) * 20;
     const startY = 30;
-    const endY = canvas.height - 80; // Adjusted for multiplier slots
+    const endY = canvas.height - 80;
     
-    // Generate path using hash-based method from your specs
-    const pathBits = [];
-    for (let i = 0; i < rows; i++) {
-      const bit = Math.random() > 0.5 ? 1 : 0;
-      pathBits.push(bit);
-    }
-    
-    // Count right steps to determine final bucket
-    const rightSteps = pathBits.reduce((sum, bit) => sum + bit, 0);
-    const finalSlot = Math.max(0, Math.min(multipliers.length - 1, rightSteps));
-    
-    // Physics simulation
+    // Physics simulation with proper peg bouncing
     let velocityX = 0;
-    let velocityY = 3;
+    let velocityY = 4;
     let currentY = startY;
     let currentX = x;
     
-    const pegSpacing = (canvas.width - 100) / (rows + 1);
+    const slotWidth = (canvas.width - 80) / multipliers.length;
     const rowHeight = (endY - startY) / rows;
     
     const animateDrop = () => {
       currentY += velocityY;
       currentX += velocityX;
       
-      // Check for peg collisions
+      // Check for peg collisions with proper bouncing physics
       const currentRow = Math.floor((currentY - startY) / rowHeight);
-      if (currentRow >= 0 && currentRow < rows && currentRow < pathBits.length) {
+      if (currentRow >= 0 && currentRow < rows) {
         const pegsInRow = currentRow + 2;
+        const pegSpacing = slotWidth;
         const rowStartX = canvas.width / 2 - ((pegsInRow - 1) * pegSpacing) / 2;
         
         for (let peg = 0; peg < pegsInRow; peg++) {
@@ -174,18 +176,23 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
           const pegY = startY + currentRow * rowHeight;
           
           const distance = Math.sqrt((currentX - pegX) ** 2 + (currentY - pegY) ** 2);
-          if (distance < 16) {
-            // Use predetermined path
-            if (pathBits[currentRow] === 1) {
-              velocityX += 2; // Go right
-            } else {
-              velocityX -= 2; // Go left
-            }
-            velocityX *= 0.85; // Damping
+          if (distance < 12) {
+            // Realistic bouncing - ball bounces left or right based on collision angle
+            const angle = Math.atan2(currentY - pegY, currentX - pegX);
+            const bounce = Math.random() > 0.5 ? 1 : -1;
+            velocityX = bounce * (2 + Math.random() * 2);
+            velocityY = Math.abs(velocityY) * 0.9; // Slight dampening
+            
+            // Add some randomness for realistic bouncing
+            currentX += (Math.random() - 0.5) * 10;
             break;
           }
         }
       }
+      
+      // Apply gravity and air resistance
+      velocityY += 0.2; // gravity
+      velocityX *= 0.99; // air resistance
       
       // Keep ball in bounds
       if (currentX < 50) {
@@ -202,18 +209,20 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
       if (currentY < endY) {
         animationRef.current = requestAnimationFrame(animateDrop);
       } else {
-        // Ball landed in predetermined slot
+        // Determine which slot the ball landed in
+        const slotIndex = Math.floor((currentX - 40) / slotWidth);
+        const finalSlot = Math.max(0, Math.min(multipliers.length - 1, slotIndex));
         const multiplier = multipliers[finalSlot];
+        
         setLastResult({ slot: finalSlot, multiplier });
         
         // Trigger spring animation
         setSpringSlots([finalSlot]);
         setTimeout(() => setSpringSlots([]), 800);
         
-        const totalPayout = betAmount * multiplier;
-        const profit = totalPayout - betAmount;
+        const profit = betAmount * (multiplier - 1); // Only profit
         setLastWin(profit);
-        onUpdateBalance(totalPayout); // Return original bet + profit
+        onUpdateBalance(profit); // Only add profit
         
         setIsDropping(false);
         setBallHistory([]);
@@ -297,16 +306,16 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
         </div>
 
         {/* Plinko Board */}
-        <div className="mb-4 relative">
+        <div className="mb-2 relative">
           <canvas
             ref={canvasRef}
             width={600}
-            height={440} // Reduced height to move multipliers up
+            height={500}
             className="w-full border border-gray-600 rounded-lg"
           />
         </div>
 
-        {/* Multiplier Slots - Moved up closer to board */}
+        {/* Multiplier Slots - Right under the board */}
         <div className="grid gap-1 mb-6" style={{gridTemplateColumns: `repeat(${multipliers.length}, minmax(0, 1fr))`}}>
           {multipliers.map((multiplier, index) => (
             <div
