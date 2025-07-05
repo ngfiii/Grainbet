@@ -30,11 +30,12 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     initializeEmptyGrid();
   }, []);
 
-  // Update multiplier when revealed count or mines count changes - using PROPER Rainbet formula
+  // Update multiplier when revealed count or mines count changes - using EXACT Rainbet formula
   useEffect(() => {
     if (revealedCount > 0) {
-      const newMultiplier = calculateMultiplier(revealedCount, minesCount);
+      const newMultiplier = calculateRainbetMultiplier(revealedCount, minesCount);
       setCurrentMultiplier(newMultiplier);
+      console.log(`Revealed: ${revealedCount}, Mines: ${minesCount}, Multiplier: ${newMultiplier.toFixed(4)}x`);
     }
   }, [revealedCount, minesCount]);
 
@@ -85,26 +86,37 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     return newGrid;
   };
 
-  // PROPER Rainbet-style multiplier calculation
-  const calculateMultiplier = (safeClicks: number, mines: number) => {
+  // EXACT Rainbet Mines multiplier calculation
+  const calculateRainbetMultiplier = (safeClicks: number, mines: number) => {
     if (safeClicks === 0) return 1;
     
     const totalTiles = 25;
     const safeTiles = totalTiles - mines;
     const houseEdge = 0.01; // 1% house edge
     
-    // Calculate survival probability step by step
-    let chance = 1;
+    console.log(`=== MULTIPLIER CALCULATION ===`);
+    console.log(`Total tiles: ${totalTiles}, Mines: ${mines}, Safe tiles: ${safeTiles}`);
+    console.log(`Safe clicks made: ${safeClicks}`);
+    
+    // Calculate cumulative survival probability
+    let survivalChance = 1;
     for (let i = 0; i < safeClicks; i++) {
       const safeRemaining = safeTiles - i;
       const tilesRemaining = totalTiles - i;
-      chance *= safeRemaining / tilesRemaining;
+      const stepChance = safeRemaining / tilesRemaining;
+      survivalChance *= stepChance;
+      console.log(`Step ${i + 1}: ${safeRemaining}/${tilesRemaining} = ${stepChance.toFixed(6)}, cumulative: ${survivalChance.toFixed(6)}`);
     }
     
-    // Final multiplier = inverse of chance × (1 - house edge)
-    const multiplier = (1 / chance) * (1 - houseEdge);
+    // Final multiplier = (1 / survival chance) * (1 - house edge)
+    const fairMultiplier = 1 / survivalChance;
+    const finalMultiplier = fairMultiplier * (1 - houseEdge);
     
-    return multiplier;
+    console.log(`Fair multiplier: ${fairMultiplier.toFixed(6)}`);
+    console.log(`With house edge: ${finalMultiplier.toFixed(6)}`);
+    console.log(`=== END CALCULATION ===`);
+    
+    return finalMultiplier;
   };
 
   const startGame = () => {
