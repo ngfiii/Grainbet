@@ -1,6 +1,5 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { RedemptionTester } from '@/components/RedemptionTester';
 import type { Game } from '@/pages/Index';
 
 interface DashboardGameProps {
@@ -107,10 +106,6 @@ const DashboardGame: React.FC<DashboardGameProps> = ({ onGameSelect }) => {
             </p>
           </CardContent>
         </Card>
-      </div>
-
-      <div className="mt-8">
-        <RedemptionTester />
       </div>
 
       <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
