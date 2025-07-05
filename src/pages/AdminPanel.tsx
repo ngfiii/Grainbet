@@ -24,16 +24,6 @@ interface CoinKey {
   created_at: string;
 }
 
-interface AuthUser {
-  id: string;
-  email?: string;
-  created_at?: string;
-  last_sign_in_at?: string;
-  user_metadata?: {
-    username?: string;
-  };
-}
-
 const AdminPanel = () => {
   const { user } = useAuth();
   const { isAdminAuthenticated, logout: logoutAdmin, addTempPassword, removeTempPassword, tempPasswords } = useAdmin();
@@ -119,37 +109,6 @@ const AdminPanel = () => {
             });
           }
         });
-      }
-
-      // Try to get additional user data from auth (this might be limited by RLS)
-      try {
-        // This is a workaround - we'll use the service to get user emails if possible
-        const { data: authData } = await supabase.auth.admin.listUsers();
-        if (authData?.users && Array.isArray(authData.users)) {
-          console.log('🔐 Found auth users:', authData.users.length);
-          authData.users.forEach((authUser: AuthUser) => {
-            if (authUser.id) {
-              const existingUser = userMap.get(authUser.id);
-              if (existingUser) {
-                existingUser.email = authUser.email || existingUser.email;
-                existingUser.last_sign_in_at = authUser.last_sign_in_at;
-              } else {
-                // New user not in our tables yet
-                userMap.set(authUser.id, {
-                  id: authUser.id,
-                  email: authUser.email || 'Unknown',
-                  username: authUser.user_metadata?.username || authUser.email || 'Unknown',
-                  balance: 1000, // Default balance
-                  created_at: authUser.created_at || new Date().toISOString(),
-                  last_sign_in_at: authUser.last_sign_in_at
-                });
-              }
-            }
-          });
-        }
-      } catch (authError) {
-        console.log('⚠️ Cannot access auth.users directly (expected in production)');
-        // This is expected - auth.users is protected, so we'll work with what we have
       }
 
       const allUsers = Array.from(userMap.values()).sort((a, b) => 
