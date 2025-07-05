@@ -21,10 +21,10 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-10 px-4 py-2 md:h-10 md:px-4 md:py-2 min-h-[44px] md:min-h-[40px]",
-        sm: "h-9 rounded-md px-3 min-h-[40px] md:min-h-[36px]",
-        lg: "h-11 rounded-md px-8 min-h-[48px] md:min-h-[44px]",
-        icon: "h-10 w-10 min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px]",
+        default: "h-12 px-6 py-3 md:h-10 md:px-4 md:py-2 min-h-[48px] text-base md:text-sm font-semibold",
+        sm: "h-11 rounded-md px-4 py-3 min-h-[44px] text-base md:text-sm md:h-9 md:px-3 md:py-2",
+        lg: "h-14 rounded-md px-8 py-4 min-h-[52px] text-lg md:text-base md:h-11 md:px-8 md:py-3",
+        icon: "h-12 w-12 min-h-[48px] min-w-[48px] md:h-10 md:w-10",
       },
     },
     defaultVariants: {
@@ -47,7 +47,12 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
-        style={{ touchAction: 'manipulation' }}
+        style={{ 
+          touchAction: 'manipulation',
+          WebkitTouchCallout: 'none',
+          WebkitUserSelect: 'none',
+          userSelect: 'none'
+        }}
         {...props}
       />
     )

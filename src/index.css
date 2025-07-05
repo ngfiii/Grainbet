@@ -41,47 +41,32 @@ All colors MUST be HSL.
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
-
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
-
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-
     --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 11.2%;
-
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
-
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
-
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
@@ -109,9 +94,10 @@ All colors MUST be HSL.
     -moz-osx-font-smoothing: grayscale;
     -webkit-text-size-adjust: 100%;
     touch-action: manipulation;
+    overscroll-behavior: none;
   }
 
-  /* Prevent zoom on input focus */
+  /* Prevent zoom on input focus - critical for iPhone */
   input[type="text"], 
   input[type="number"], 
   input[type="email"], 
@@ -119,6 +105,16 @@ All colors MUST be HSL.
   select,
   textarea {
     font-size: 16px !important;
+    transform: translateZ(0);
+  }
+
+  /* iOS viewport fix */
+  html {
+    height: -webkit-fill-available;
+  }
+
+  body {
+    min-height: -webkit-fill-available;
   }
 }
 
@@ -127,136 +123,186 @@ All colors MUST be HSL.
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Mobile-first responsive design */
-@media (max-width: 768px) {
-  /* Better touch targets */
-  .touch-target,
+/* iPhone-optimized styles */
+@media screen and (max-width: 768px) {
+  /* Larger touch targets for iPhone */
   button,
   [role="button"],
   input,
   select,
-  textarea {
-    min-height: 44px;
-    min-width: 44px;
+  textarea,
+  .touch-target {
+    min-height: 48px !important;
+    min-width: 48px !important;
+    padding: 14px 18px !important;
+    font-size: 16px !important;
+    line-height: 1.2 !important;
   }
-  
-  /* Improved button spacing */
-  button {
-    padding: 12px 16px;
-    font-size: 16px;
-  }
-  
-  /* Better form controls */
-  input, select, textarea {
-    padding: 12px;
-    font-size: 16px;
-    border-radius: 8px;
-  }
-  
-  /* Mobile spacing */
-  .mobile-spacing {
-    padding: 1rem;
-  }
-  
-  /* Larger slider thumb for mobile */
-  [data-radix-slider-thumb] {
-    width: 24px !important;
-    height: 24px !important;
+
+  /* Improved slider for iPhone */
+  [data-radix-slider-root] {
+    height: 48px !important;
+    padding: 12px 0 !important;
     touch-action: pan-x;
+    -webkit-appearance: none;
   }
-  
+
   [data-radix-slider-track] {
-    height: 8px !important;
+    height: 12px !important;
+    border-radius: 6px !important;
     touch-action: pan-x;
   }
-  
-  /* Better modal sizing */
+
+  [data-radix-slider-thumb] {
+    width: 32px !important;
+    height: 32px !important;
+    border: 4px solid #f59e0b !important;
+    background: white !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+    touch-action: pan-x;
+    cursor: grab;
+    -webkit-appearance: none;
+    transform: translateY(-50%);
+  }
+
+  [data-radix-slider-thumb]:active {
+    cursor: grabbing;
+    transform: translateY(-50%) scale(1.1);
+  }
+
+  /* Better spacing for iPhone */
+  .mobile-spacing,
+  .p-6 {
+    padding: 20px !important;
+  }
+
+  .p-4 {
+    padding: 16px !important;
+  }
+
+  .gap-2 {
+    gap: 12px !important;
+  }
+
+  .gap-4 {
+    gap: 16px !important;
+  }
+
+  /* Improved form elements */
+  input,
+  select,
+  textarea {
+    border-radius: 12px !important;
+    border: 2px solid #374151 !important;
+    background: #1f2937 !important;
+    color: white !important;
+    padding: 16px !important;
+    font-size: 16px !important;
+    line-height: 1.3 !important;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    border-color: #f59e0b !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1) !important;
+  }
+
+  /* Better modal experience */
+  [data-radix-dialog-overlay] {
+    padding: 16px !important;
+  }
+
   [data-radix-dialog-content] {
-    width: 95vw !important;
-    max-width: 95vw !important;
+    width: calc(100vw - 32px) !important;
+    max-width: calc(100vw - 32px) !important;
+    max-height: calc(100vh - 64px) !important;
     margin: 0 !important;
+    border-radius: 16px !important;
+    overflow-y: auto !important;
   }
-  
+
+  /* Grid improvements for iPhone */
+  .grid-cols-8 {
+    grid-template-columns: repeat(6, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .grid-cols-5 {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+
+  /* Better text sizing */
+  .text-3xl {
+    font-size: 1.8rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .text-2xl {
+    font-size: 1.5rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .text-9xl {
+    font-size: 4rem !important;
+    line-height: 1 !important;
+  }
+
+  /* Card improvements */
+  .rounded-lg {
+    border-radius: 16px !important;
+  }
+
+  .border {
+    border-width: 2px !important;
+  }
+
   /* Prevent horizontal scroll */
-  body {
-    overflow-x: hidden;
+  .overflow-x-hidden {
+    overflow-x: hidden !important;
   }
-  
-  /* Better card spacing */
-  .card {
-    margin: 0.5rem;
+
+  /* Better button feedback */
+  button:active,
+  [role="button"]:active {
+    transform: scale(0.96) !important;
+    transition: transform 0.1s ease !important;
   }
 }
 
-/* iOS specific fixes */
+/* iOS Safari specific fixes */
 @supports (-webkit-touch-callout: none) {
-  /* Fix viewport height issues on iOS */
+  /* Fix 100vh issues */
   .min-h-screen {
-    min-height: -webkit-fill-available;
+    min-height: -webkit-fill-available !important;
   }
-  
-  /* Prevent rubber band scrolling */
+
+  /* Prevent bounce scroll */
   body {
-    position: fixed;
-    overflow-y: scroll;
-    width: 100%;
-    height: 100%;
+    position: relative;
+    overflow-x: hidden;
   }
-  
-  /* Better slider interaction on iOS */
+
+  /* Better slider interaction */
   [data-radix-slider-root] {
     -webkit-appearance: none;
     touch-action: pan-x;
+    -webkit-user-select: none;
+    user-select: none;
   }
-  
+
   [data-radix-slider-thumb] {
     -webkit-appearance: none;
-    cursor: grab;
-    touch-action: pan-x;
+    -webkit-user-select: none;
+    user-select: none;
   }
-  
-  [data-radix-slider-thumb]:active {
-    cursor: grabbing;
+
+  /* Prevent text selection on game elements */
+  .select-none {
+    -webkit-user-select: none !important;
+    user-select: none !important;
   }
-}
-
-/* Enhanced slider styling for mobile */
-.slider-enhanced {
-  touch-action: pan-x;
-}
-
-.slider-enhanced [data-radix-slider-track] {
-  background: linear-gradient(to right, #10b981, #f59e0b, #ef4444);
-  height: 8px;
-  border-radius: 4px;
-}
-
-.slider-enhanced [data-radix-slider-range] {
-  background: transparent;
-}
-
-.slider-enhanced [data-radix-slider-thumb] {
-  width: 24px;
-  height: 24px;
-  background: white;
-  border: 3px solid #f59e0b;
-  border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  cursor: grab;
-  transition: all 0.2s ease;
-  touch-action: pan-x;
-}
-
-.slider-enhanced [data-radix-slider-thumb]:hover,
-.slider-enhanced [data-radix-slider-thumb]:focus {
-  transform: scale(1.1);
-  border-color: #f59e0b;
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-}
-
-.slider-enhanced [data-radix-slider-thumb]:active {
-  cursor: grabbing;
-  transform: scale(1.15);
 }
 
 /* Custom animations */
@@ -353,7 +399,7 @@ All colors MUST be HSL.
   color: black;
 }
 
-/* Hide Lovable badge - comprehensive approach */
+/* Hide Lovable badge */
 div[data-lovable-badge],
 [data-lovable-badge],
 div[class*="lovable" i],
@@ -375,50 +421,10 @@ span[class*="lovable" i] {
   pointer-events: none !important;
 }
 
-/* Additional selectors to catch any remaining badges */
 *[id*="lovable" i],
 *[data-testid*="lovable" i],
 *[aria-label*="lovable" i],
 *[title*="lovable" i] {
   display: none !important;
   visibility: hidden !important;
-}
-
-/* Hide any text content containing "lovable" */
-*:not(script):not(style) {
-  &:has-text("lovable"),
-  &:has-text("Lovable"),
-  &:has-text("LOVABLE") {
-    display: none !important;
-  }
-}
-
-/* Mobile-friendly button styles */
-@media (max-width: 768px) {
-  .btn-mobile {
-    padding: 14px 20px;
-    font-size: 16px;
-    border-radius: 12px;
-    min-height: 48px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-  }
-  
-  .btn-mobile:active {
-    transform: scale(0.98);
-    transition: transform 0.1s ease;
-  }
-}
-
-/* Better modal experience on mobile */
-@media (max-width: 768px) {
-  [data-radix-dialog-overlay] {
-    padding: 20px;
-  }
-  
-  [data-radix-dialog-content] {
-    max-height: 90vh;
-    overflow-y: auto;
-    border-radius: 16px;
-  }
 }
