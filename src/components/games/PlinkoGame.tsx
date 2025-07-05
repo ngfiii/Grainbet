@@ -55,7 +55,7 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     const width = canvas.width;
-    const height = canvas.height - 100; // Leave space for multiplier slots
+    const height = canvas.height - 60; // Adjusted for multiplier slots
     
     // Background gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
@@ -68,7 +68,7 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     const pegRadius = 6;
     const startY = 60;
     const pegSpacing = (width - 100) / (rows + 1);
-    const rowHeight = (height - 150) / rows;
+    const rowHeight = (height - 120) / rows; // Adjusted for multiplier slots
     
     for (let row = 0; row < rows; row++) {
       const pegsInRow = row + 2;
@@ -137,7 +137,18 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     const ballId = Date.now();
     let x = canvas.width / 2 + (Math.random() - 0.5) * 20;
     const startY = 30;
-    const endY = canvas.height - 120;
+    const endY = canvas.height - 80; // Adjusted for multiplier slots
+    
+    // Generate path using hash-based method from your specs
+    const pathBits = [];
+    for (let i = 0; i < rows; i++) {
+      const bit = Math.random() > 0.5 ? 1 : 0;
+      pathBits.push(bit);
+    }
+    
+    // Count right steps to determine final bucket
+    const rightSteps = pathBits.reduce((sum, bit) => sum + bit, 0);
+    const finalSlot = Math.max(0, Math.min(multipliers.length - 1, rightSteps));
     
     // Physics simulation
     let velocityX = 0;
@@ -154,7 +165,7 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
       
       // Check for peg collisions
       const currentRow = Math.floor((currentY - startY) / rowHeight);
-      if (currentRow >= 0 && currentRow < rows) {
+      if (currentRow >= 0 && currentRow < rows && currentRow < pathBits.length) {
         const pegsInRow = currentRow + 2;
         const rowStartX = canvas.width / 2 - ((pegsInRow - 1) * pegSpacing) / 2;
         
@@ -164,8 +175,12 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
           
           const distance = Math.sqrt((currentX - pegX) ** 2 + (currentY - pegY) ** 2);
           if (distance < 16) {
-            // Bounce off peg
-            velocityX += (Math.random() - 0.5) * 6;
+            // Use predetermined path
+            if (pathBits[currentRow] === 1) {
+              velocityX += 2; // Go right
+            } else {
+              velocityX -= 2; // Go left
+            }
             velocityX *= 0.85; // Damping
             break;
           }
@@ -187,11 +202,7 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
       if (currentY < endY) {
         animationRef.current = requestAnimationFrame(animateDrop);
       } else {
-        // Ball landed
-        const slotWidth = (canvas.width - 100) / multipliers.length;
-        const slotIndex = Math.floor((currentX - 50) / slotWidth);
-        const finalSlot = Math.max(0, Math.min(multipliers.length - 1, slotIndex));
-        
+        // Ball landed in predetermined slot
         const multiplier = multipliers[finalSlot];
         setLastResult({ slot: finalSlot, multiplier });
         
@@ -199,9 +210,10 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
         setSpringSlots([finalSlot]);
         setTimeout(() => setSpringSlots([]), 800);
         
-        const profit = betAmount * (multiplier - 1); // Only profit
+        const totalPayout = betAmount * multiplier;
+        const profit = totalPayout - betAmount;
         setLastWin(profit);
-        onUpdateBalance(profit);
+        onUpdateBalance(totalPayout); // Return original bet + profit
         
         setIsDropping(false);
         setBallHistory([]);
@@ -289,7 +301,7 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
           <canvas
             ref={canvasRef}
             width={600}
-            height={500}
+            height={440} // Reduced height to move multipliers up
             className="w-full border border-gray-600 rounded-lg"
           />
         </div>

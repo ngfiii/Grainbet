@@ -32,8 +32,8 @@ const AdminPanel = () => {
   const [customKeyAmount, setCustomKeyAmount] = useState(100);
   const [loading, setLoading] = useState(false);
 
-  // Check if user is admin (ngfi)
-  const isAdmin = user?.email === 'ngfi' || user?.id === 'ngfi';
+  // Check if user is admin (ngfi) - case insensitive
+  const isAdmin = user?.email?.toLowerCase() === 'ngfi' || user?.id === 'ngfi';
 
   useEffect(() => {
     if (isAdmin) {
@@ -137,7 +137,22 @@ const AdminPanel = () => {
 
   // Redirect if not admin
   if (!isAdmin) {
-    return <Navigate to="/" replace />;
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <h1 className="text-4xl font-bold text-red-400 mb-4 font-mono">Access Denied</h1>
+          <p className="text-gray-300 mb-8 font-mono">
+            You don't have permission to access the admin panel.
+          </p>
+          <Button
+            onClick={() => window.history.back()}
+            className="bg-yellow-600 hover:bg-yellow-700 text-black font-bold py-3 px-8 text-lg font-mono"
+          >
+            Go Back
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (

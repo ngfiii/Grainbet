@@ -1,122 +1,129 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { X } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TipModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTipSent: (amount: number) => void;
+  balance: number;
 }
 
-export const TipModal: React.FC<TipModalProps> = ({ isOpen, onClose, onTipSent }) => {
+export const TipModal: React.FC<TipModalProps> = ({ isOpen, onClose, onTipSent, balance }) => {
   const { user } = useAuth();
   const [username, setUsername] = useState('');
   const [amount, setAmount] = useState(10);
   const [loading, setLoading] = useState(false);
-  const [userValid, setUserValid] = useState<boolean | null>(null);
+  const [userValidation, setUserValidation] = useState<'valid' | 'invalid' | 'none'>('none');
 
-  useEffect(() => {
-    if (username.trim().length > 0) {
-      checkUser();
-    } else {
-      setUserValid(null);
+  const validateUser = async (username: string) => {
+    if (!username.trim()) {
+      setUserValidation('none');
+      return;
     }
-  }, [username]);
 
-  const checkUser = async () => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
-        .select('id')
-        .eq('username', username.trim())
+        .select('id, username')
+        .ilike('username', username.trim())
         .single();
 
-      setUserValid(!!data);
-    } catch {
-      setUserValid(false);
+      if (error || !data) {
+        setUserValidation('invalid');
+      } else {
+        setUserValidation('valid');
+      }
+    } catch (error) {
+      setUserValidation('invalid');
     }
   };
 
+  const handleUsernameChange = (value: string) => {
+    setUsername(value);
+    // Debounce validation
+    const timeoutId = setTimeout(() => {
+      validateUser(value);
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  };
+
   const sendTip = async () => {
-    if (!userValid || amount <= 0) return;
+    if (!user || amount > balance || amount < 1 || userValidation !== 'valid') return;
 
     setLoading(true);
     try {
       // Get recipient user ID
-      const { data: recipient } = await supabase
+      const { data: recipient, error: recipientError } = await supabase
         .from('profiles')
         .select('id')
-        .eq('username', username.trim())
+        .ilike('username', username.trim())
         .single();
 
-      if (!recipient) {
+      if (recipientError || !recipient) {
         toast.error('User not found');
         setLoading(false);
         return;
       }
 
-      // Get current user balance
-      const { data: senderBalance } = await supabase
-        .from('user_balances')
-        .select('balance')
-        .eq('id', user?.id)
-        .single();
-
-      if (!senderBalance || senderBalance.balance < amount) {
-        toast.error('Insufficient balance');
+      if (recipient.id === user.id) {
+        toast.error('You cannot tip yourself');
         setLoading(false);
         return;
       }
 
-      // Get recipient balance
-      const { data: recipientBalance } = await supabase
+      // Update recipient balance
+      const { data: recipientBalance, error: getBalanceError } = await supabase
         .from('user_balances')
         .select('balance')
         .eq('id', recipient.id)
         .single();
 
-      // Update sender balance
-      await supabase
-        .from('user_balances')
-        .update({ balance: senderBalance.balance - amount })
-        .eq('id', user?.id);
+      if (getBalanceError) {
+        toast.error('Error processing tip');
+        setLoading(false);
+        return;
+      }
 
-      // Update recipient balance
-      await supabase
+      const newRecipientBalance = Math.min(6900, recipientBalance.balance + amount);
+      const actualTipAmount = newRecipientBalance - recipientBalance.balance;
+
+      const { error: updateError } = await supabase
         .from('user_balances')
-        .update({ balance: (recipientBalance?.balance || 0) + amount })
+        .update({ balance: newRecipientBalance })
         .eq('id', recipient.id);
 
-      onTipSent(amount);
-      toast.success(`Successfully sent ${amount} coins to ${username}!`);
+      if (updateError) {
+        toast.error('Error processing tip');
+        setLoading(false);
+        return;
+      }
+
+      // Deduct from sender
+      onTipSent(actualTipAmount);
+      
+      toast.success(`Successfully tipped ${actualTipAmount} coins to ${username}!`);
+      onClose();
       setUsername('');
       setAmount(10);
-      onClose();
+      setUserValidation('none');
     } catch (error) {
-      toast.error('Failed to send tip');
+      toast.error('Error sending tip');
     }
     setLoading(false);
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
-      <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 max-w-sm w-full mx-4 animate-scale-in">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-bold text-yellow-400 font-mono">Send Tip</h3>
-          <button 
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            <X size={20} />
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="bg-gray-800 border-gray-700">
+        <DialogHeader>
+          <DialogTitle className="text-yellow-400 font-mono">Tip User</DialogTitle>
+        </DialogHeader>
         
         <div className="space-y-4">
           <div>
@@ -124,38 +131,44 @@ export const TipModal: React.FC<TipModalProps> = ({ isOpen, onClose, onTipSent }
             <Input
               type="text"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter username..."
+              onChange={(e) => handleUsernameChange(e.target.value)}
+              placeholder="Enter username to tip"
               className="bg-gray-700 border-gray-600 text-white font-mono"
             />
-            {userValid === true && (
-              <p className="text-green-400 text-sm mt-1">✓ Valid user</p>
+            {userValidation === 'valid' && (
+              <p className="text-green-400 text-sm mt-1 font-mono">✓ Valid user</p>
             )}
-            {userValid === false && (
-              <p className="text-red-400 text-sm mt-1">✗ User not found</p>
+            {userValidation === 'invalid' && (
+              <p className="text-red-400 text-sm mt-1 font-mono">✗ User not found</p>
             )}
           </div>
-
+          
           <div>
-            <label className="block text-sm font-medium mb-2 font-mono">Amount</label>
+            <label className="block text-sm font-medium mb-2 font-mono">Tip Amount</label>
             <Input
               type="number"
               value={amount}
-              onChange={(e) => setAmount(Math.max(1, parseInt(e.target.value) || 1))}
-              className="bg-gray-700 border-gray-600 text-white font-mono"
+              onChange={(e) => setAmount(Math.max(1, Math.min(balance, parseInt(e.target.value) || 1)))}
               min={1}
+              max={balance}
+              className="bg-gray-700 border-gray-600 text-white font-mono"
             />
           </div>
-
-          <Button
-            onClick={sendTip}
-            disabled={loading || !userValid || amount <= 0}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 transition-all duration-200 hover:scale-105 font-mono"
-          >
-            {loading ? 'Sending...' : `Send ${amount} Coins`}
-          </Button>
+          
+          <div className="flex gap-2">
+            <Button
+              onClick={sendTip}
+              disabled={loading || amount > balance || amount < 1 || userValidation !== 'valid' || !username.trim()}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 font-mono"
+            >
+              {loading ? 'Sending...' : `Send Tip (${amount} coins)`}
+            </Button>
+            <Button onClick={onClose} variant="outline" className="font-mono">
+              Cancel
+            </Button>
+          </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };

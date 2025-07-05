@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export const useBalance = () => {
   const { user } = useAuth();
-  const [balance, setBalance] = useState(1000);
+  const [balance, setBalance] = useState(50); // Changed from 1000 to 50
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,7 +14,7 @@ export const useBalance = () => {
     } else {
       // For non-authenticated users, use localStorage as fallback
       const saved = localStorage.getItem('grainbet-balance');
-      setBalance(saved ? parseFloat(saved) : 1000);
+      setBalance(saved ? parseFloat(saved) : 50); // Changed from 1000 to 50
       setLoading(false);
     }
   }, [user]);

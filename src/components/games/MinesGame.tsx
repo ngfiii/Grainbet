@@ -88,21 +88,33 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   const calculateMultiplier = (revealed: number, mines: number) => {
     if (revealed === 0) return 1;
     
-    const safeSpots = 25 - mines;
-    const maxReveals = Math.min(revealed, safeSpots);
+    const totalTiles = 25;
+    const safeTiles = totalTiles - mines;
+    const houseEdge = 0.01; // 1% house edge
     
-    // Fixed multiplier calculation based on probability
+    // Calculate probability-based multiplier
     let multiplier = 1;
-    for (let i = 0; i < maxReveals; i++) {
-      const remainingSafe = safeSpots - i;
-      const remainingTotal = 25 - i;
-      const chance = remainingSafe / remainingTotal;
-      multiplier *= (1 / chance);
+    for (let i = 0; i < revealed; i++) {
+      const remainingSafe = safeTiles - i;
+      const remainingTotal = totalTiles - i;
+      const probability = remainingSafe / remainingTotal;
+      multiplier *= (1 / probability);
     }
     
-    // Cap multiplier to reasonable limits based on mines
-    const maxMultiplier = mines === 1 ? 24 : mines === 2 ? 50 : mines === 3 ? 100 : 200;
-    return Math.min(multiplier, maxMultiplier);
+    // Apply house edge
+    multiplier *= (1 - houseEdge);
+    
+    // Cap based on number of mines for balance
+    const maxMultipliers = {
+      1: 24,
+      2: 50, 
+      3: 100,
+      4: 200,
+      5: 400
+    };
+    
+    const maxMult = maxMultipliers[mines as keyof typeof maxMultipliers] || 1000;
+    return Math.min(multiplier, maxMult);
   };
 
   const startGame = () => {
@@ -164,8 +176,9 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   const cashOut = () => {
     if (gameStatus !== 'playing') return;
     
-    const profit = betAmount * (currentMultiplier - 1); // Only the profit
-    onUpdateBalance(profit);
+    const totalPayout = betAmount * currentMultiplier;
+    const profit = totalPayout - betAmount;
+    onUpdateBalance(totalPayout); // Return original bet + profit
     setGameStatus('finished');
     setGameResult(`🎉 Cashed out for ${profit.toFixed(0)} coins profit!`);
   };

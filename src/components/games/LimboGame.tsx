@@ -27,19 +27,20 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     // Deduct bet
     onUpdateBalance(-betAmount);
     
-    // Generate final result
+    // Generate fair crash point using the formula from your specs
     const random = Math.random();
-    const rollResult = 1 / (1 - random * 0.99);
+    const hashInt = Math.floor(random * Math.pow(2, 52));
+    const crashPoint = Math.floor(Math.pow(2, 52) / (hashInt + 1)) / 100;
+    const rollResult = crashPoint * 0.99; // Apply 1% house edge
     
-    // Faster animation - 0.7 seconds total
+    // Animation
     const animationDuration = 700;
-    const steps = 35; // Reduced steps for smoother performance
+    const steps = 35;
     const stepDuration = animationDuration / steps;
     
     for (let i = 0; i <= steps; i++) {
       setTimeout(() => {
         const progress = i / steps;
-        // Smoother easing function
         const easedProgress = 1 - Math.pow(1 - progress, 2);
         const currentValue = easedProgress * rollResult;
         setAnimationMultiplier(currentValue);
@@ -48,9 +49,10 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
           setResult(rollResult);
           
           if (rollResult >= targetMultiplier) {
-            const profit = betAmount * (targetMultiplier - 1); // Only the profit
+            const totalPayout = betAmount * targetMultiplier;
+            const profit = totalPayout - betAmount;
             setLastWin(profit);
-            onUpdateBalance(profit);
+            onUpdateBalance(totalPayout); // Return original bet + profit
           }
           setIsRolling(false);
         }
@@ -132,7 +134,7 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
             }`}>
               {result >= targetMultiplier ? '🎉 WIN!' : '💔 LOSE'}
             </div>
-            {lastWin && (
+            {lastWin && lastWin > 0 && (
               <div className="text-lg text-green-400 animate-pulse font-mono">
                 +{lastWin.toFixed(0)} coins profit
               </div>

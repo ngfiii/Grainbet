@@ -1,7 +1,8 @@
 
-import { Menu, X, Home, Dice1, Rocket, Spade, Bomb, Target, Circle } from 'lucide-react';
+import { Menu, X, Home, Dice1, Rocket, Spade, Bomb, Target, Circle, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Game } from '@/pages/Index';
+import { Link } from 'react-router-dom';
 
 interface SidebarProps {
   currentGame: Game;
@@ -77,6 +78,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </button>
               </li>
             ))}
+            
+            {/* Admin Panel Link - Always visible */}
+            <li>
+              <Link to="/admin">
+                <button
+                  className="w-full flex items-center p-3 rounded-lg transition-all duration-200 hover:bg-gray-700 hover:scale-105 text-gray-300 hover:text-white"
+                >
+                  <span className="text-xl mr-3">⚙️</span>
+                  {!collapsed && (
+                    <span className="font-medium">Admin Panel</span>
+                  )}
+                </button>
+              </Link>
+            </li>
           </ul>
         </nav>
       </div>

@@ -1,10 +1,11 @@
 
-import { Coins, Plus, LogOut, Circle } from 'lucide-react';
+import { Coins, Plus, LogOut, Circle, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { RedeemModal } from './RedeemModal';
+import { TipModal } from './TipModal';
 import { Link } from 'react-router-dom';
 
 interface TopBarProps {
@@ -13,9 +14,10 @@ interface TopBarProps {
   onDeductCoins: (amount: number) => number;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins }) => {
+export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins, onDeductCoins }) => {
   const { signOut, user } = useAuth();
   const [showRedeemModal, setShowRedeemModal] = useState(false);
+  const [showTipModal, setShowTipModal] = useState(false);
   
   const handleRedeemSuccess = (amount: number) => {
     const actualAmount = onAddCoins(amount);
@@ -24,12 +26,16 @@ export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins }) => {
     }
   };
 
+  const handleTipSent = (amount: number) => {
+    onDeductCoins(amount);
+  };
+
   const handleSignOut = async () => {
     await signOut();
     toast.success('Signed out successfully!');
   };
 
-  const isAdmin = user?.email === 'ngfi' || user?.id === 'ngfi';
+  const isAdmin = user?.email?.toLowerCase() === 'ngfi' || user?.id === 'ngfi';
 
   return (
     <>
@@ -43,6 +49,14 @@ export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins }) => {
             <Coins className="text-yellow-400" size={20} />
             <span className="font-bold text-lg font-mono">{balance.toFixed(0)}</span>
           </div>
+
+          <Button 
+            onClick={() => setShowTipModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200 font-mono"
+          >
+            <Plus size={16} className="mr-1" />
+            Tip User
+          </Button>
           
           <Button 
             onClick={() => setShowRedeemModal(true)}
@@ -62,6 +76,7 @@ export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins }) => {
           {isAdmin && (
             <Link to="/admin">
               <Button className="bg-red-600 hover:bg-red-700 text-white transition-all duration-200 font-mono">
+                <Settings size={16} className="mr-1" />
                 Admin Panel
               </Button>
             </Link>
@@ -83,6 +98,13 @@ export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins }) => {
         isOpen={showRedeemModal} 
         onClose={() => setShowRedeemModal(false)}
         onSuccess={handleRedeemSuccess}
+      />
+
+      <TipModal 
+        isOpen={showTipModal} 
+        onClose={() => setShowTipModal(false)}
+        onTipSent={handleTipSent}
+        balance={balance}
       />
     </>
   );

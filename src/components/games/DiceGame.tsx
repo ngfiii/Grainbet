@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,11 +19,16 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
 
   const calculateMultiplier = () => {
     const targetNum = target[0];
+    const houseEdge = 0.01; // 1% house edge
+    
+    let probability;
     if (isOver) {
-      return targetNum >= 95 ? 1.01 : 99 / (100 - targetNum);
+      probability = (100 - targetNum) / 100;
     } else {
-      return targetNum <= 5 ? 1.01 : 99 / targetNum;
+      probability = targetNum / 100;
     }
+    
+    return (1 / probability) * (1 - houseEdge);
   };
 
   const roll = async () => {
@@ -37,7 +43,7 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
     // Deduct bet
     onUpdateBalance(-betAmount);
     
-    // Faster rolling animation - reduced from 1000ms to 300ms
+    // Animation
     await new Promise(resolve => setTimeout(resolve, 300));
     
     const rollResult = Math.random() * 100;
@@ -47,9 +53,10 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
     
     if (won) {
       const multiplier = calculateMultiplier();
-      const profit = betAmount * (multiplier - 1); // Only the profit, not the original bet
+      const totalPayout = betAmount * multiplier;
+      const profit = totalPayout - betAmount;
       setLastWin(profit);
-      onUpdateBalance(profit);
+      onUpdateBalance(totalPayout); // Return original bet + profit
     }
     
     setIsRolling(false);
@@ -89,22 +96,25 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
             <div 
               className="absolute top-16 w-0.5 h-8 bg-gray-400/20 transition-all duration-150 ease-out"
               style={{ 
-                left: `${getDisplayNumber()}%`,
+                left: `${result !== null ? result : target[0]}%`,
                 transform: 'translateX(-50%)'
               }}
             />
             
             {/* Proper 6-sided Hexagon */}
             <div 
-              className={`absolute top-0 w-12 h-12 flex items-center justify-center shadow-lg transition-all duration-150 ease-out ${getResultColor()}`}
+              className={`absolute top-0 w-12 h-12 flex items-center justify-center shadow-lg transition-all duration-150 ease-out ${
+                result === null ? 'bg-yellow-400' : 
+                (isOver ? result > target[0] : result < target[0]) ? 'bg-green-400' : 'bg-red-400'
+              }`}
               style={{ 
-                left: `${getDisplayNumber()}%`,
+                left: `${result !== null ? result : target[0]}%`,
                 transform: 'translateX(-50%)',
                 clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)'
               }}
             >
               <span className="text-sm font-bold text-black font-mono">
-                {getDisplayNumber().toFixed(1)}
+                {(result !== null ? result : target[0]).toFixed(1)}
               </span>
             </div>
           </div>
@@ -211,7 +221,7 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
                 {(isOver ? result > target[0] : result < target[0]) ? '🎉 WIN!' : '💔 LOSE'}
               </div>
             )}
-            {lastWin && (
+            {lastWin && lastWin > 0 && (
               <div className="text-lg text-green-400 animate-bounce font-mono">
                 +{lastWin.toFixed(0)} coins profit
               </div>
