@@ -26,38 +26,70 @@ export const RedeemModal: React.FC<RedeemModalProps> = ({ isOpen, onClose, onSuc
 
     setLoading(true);
     try {
+      console.log('Attempting to redeem code:', code.toUpperCase());
+      console.log('Current user:', user?.id);
+
       // Check if key exists and is unused
       const { data: keyData, error: keyError } = await supabase
         .from('coin_keys')
         .select('*')
         .eq('code', code.toUpperCase())
         .eq('used', false)
-        .single();
+        .maybeSingle();
 
-      if (keyError || !keyData) {
+      console.log('Key lookup result:', { keyData, keyError });
+
+      if (keyError) {
+        console.error('Error looking up key:', keyError);
+        toast.error('Error checking redemption code');
+        setLoading(false);
+        return;
+      }
+
+      if (!keyData) {
         toast.error('Invalid or already used redemption code');
         setLoading(false);
         return;
       }
 
-      // Mark key as used
-      const { error: updateError } = await supabase
+      console.log('Found valid key:', keyData);
+
+      // Mark key as used in a transaction-like approach
+      const { data: updatedKey, error: updateError } = await supabase
         .from('coin_keys')
-        .update({ used: true, used_by: user?.id, used_at: new Date().toISOString() })
-        .eq('id', keyData.id);
+        .update({ 
+          used: true, 
+          used_by: user?.id || null, 
+          used_at: new Date().toISOString() 
+        })
+        .eq('id', keyData.id)
+        .eq('used', false) // Only update if still unused
+        .select()
+        .single();
+
+      console.log('Update result:', { updatedKey, updateError });
 
       if (updateError) {
-        toast.error('Failed to redeem key');
+        console.error('Error updating key:', updateError);
+        toast.error('Failed to redeem key - it may have been used by someone else');
         setLoading(false);
         return;
       }
 
-      // Add coins to user balance
+      if (!updatedKey) {
+        toast.error('Key was already used by someone else');
+        setLoading(false);
+        return;
+      }
+
+      // Successfully redeemed - add coins to user balance
+      console.log('Key successfully redeemed, adding coins:', keyData.amount);
       onSuccess(keyData.amount);
       toast.success(`Successfully redeemed ${keyData.amount} coins!`);
       setCode('');
       onClose();
     } catch (error) {
+      console.error('Redemption error:', error);
       toast.error('An error occurred while redeeming the key');
     }
     setLoading(false);
@@ -87,7 +119,7 @@ export const RedeemModal: React.FC<RedeemModalProps> = ({ isOpen, onClose, onSuc
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               placeholder="Enter your code..."
               className="bg-gray-700 border-gray-600 text-white font-mono"
-              maxLength={15}
+              maxLength={20}
             />
           </div>
 

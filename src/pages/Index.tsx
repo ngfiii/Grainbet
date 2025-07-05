@@ -18,6 +18,40 @@ const Index = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
+  // Dynamic page title effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    const updateTitle = () => {
+      let showGrainbet = true;
+      
+      const switchTitle = () => {
+        if (showGrainbet) {
+          document.title = 'GrainBet';
+          setTimeout(() => {
+            showGrainbet = false;
+            switchTitle();
+          }, 3000); // Show GrainBet for 3 seconds
+        } else {
+          document.title = 'Ngfi on dc';
+          setTimeout(() => {
+            showGrainbet = true;
+            switchTitle();
+          }, 5000); // Show Ngfi on dc for 5 seconds
+        }
+      };
+      
+      switchTitle();
+    };
+
+    updateTitle();
+
+    return () => {
+      if (interval) clearInterval(interval);
+      document.title = 'GrainBet'; // Reset to default on cleanup
+    };
+  }, []);
+
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);

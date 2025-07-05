@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export const useBalance = () => {
   const { user } = useAuth();
-  const [balance, setBalance] = useState(50); // Changed from 1000 to 50
+  const [balance, setBalance] = useState(50);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,7 +14,7 @@ export const useBalance = () => {
     } else {
       // For non-authenticated users, use localStorage as fallback
       const saved = localStorage.getItem('grainbet-balance');
-      setBalance(saved ? parseFloat(saved) : 50); // Changed from 1000 to 50
+      setBalance(saved ? parseFloat(saved) : 50);
       setLoading(false);
     }
   }, [user]);
@@ -23,6 +23,7 @@ export const useBalance = () => {
     if (!user) return;
     
     try {
+      console.log('Fetching balance for user:', user.id);
       const { data, error } = await supabase
         .from('user_balances')
         .select('balance')
@@ -35,6 +36,7 @@ export const useBalance = () => {
       }
 
       if (data) {
+        console.log('Fetched balance:', data.balance);
         setBalance(parseFloat(data.balance.toString()));
       }
     } catch (error) {
@@ -46,6 +48,7 @@ export const useBalance = () => {
 
   const updateBalance = async (amount: number) => {
     const newBalance = Math.max(0, balance + amount);
+    console.log('Updating balance from', balance, 'to', newBalance, 'change:', amount);
     
     if (user) {
       try {
@@ -61,6 +64,8 @@ export const useBalance = () => {
           console.error('Error updating balance:', error);
           return;
         }
+        
+        console.log('Balance updated successfully in database');
       } catch (error) {
         console.error('Error updating balance:', error);
         return;
@@ -73,8 +78,11 @@ export const useBalance = () => {
   };
 
   const addCoins = (amount: number) => {
-    const maxAllowed = user ? 6900 : 6900;
+    console.log('Adding coins:', amount, 'current balance:', balance);
+    const maxAllowed = 6900;
     const actualAmount = Math.min(amount, maxAllowed - balance);
+    console.log('Actual amount to add:', actualAmount);
+    
     if (actualAmount > 0) {
       updateBalance(actualAmount);
     }
@@ -82,7 +90,9 @@ export const useBalance = () => {
   };
 
   const deductCoins = (amount: number) => {
+    console.log('Deducting coins:', amount, 'current balance:', balance);
     const actualAmount = Math.min(amount, balance);
+    
     if (actualAmount > 0) {
       updateBalance(-actualAmount);
     }
