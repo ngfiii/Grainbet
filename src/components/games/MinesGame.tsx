@@ -30,7 +30,7 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     initializeEmptyGrid();
   }, []);
 
-  // Update multiplier when revealed count or mines count changes - using proper formula
+  // Update multiplier when revealed count or mines count changes - using PROPER Rainbet formula
   useEffect(() => {
     if (revealedCount > 0) {
       const newMultiplier = calculateMultiplier(revealedCount, minesCount);
@@ -85,7 +85,7 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     return newGrid;
   };
 
-  // Proper Rainbet-style multiplier calculation
+  // PROPER Rainbet-style multiplier calculation
   const calculateMultiplier = (safeClicks: number, mines: number) => {
     if (safeClicks === 0) return 1;
     
@@ -93,18 +93,16 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     const safeTiles = totalTiles - mines;
     const houseEdge = 0.01; // 1% house edge
     
-    // Calculate survival probability for each click
-    let totalSurvivalProbability = 1;
-    
-    for (let click = 0; click < safeClicks; click++) {
-      const safeTilesRemaining = safeTiles - click;
-      const totalTilesRemaining = totalTiles - click;
-      const survivalProbability = safeTilesRemaining / totalTilesRemaining;
-      totalSurvivalProbability *= survivalProbability;
+    // Calculate survival probability step by step
+    let chance = 1;
+    for (let i = 0; i < safeClicks; i++) {
+      const safeRemaining = safeTiles - i;
+      const tilesRemaining = totalTiles - i;
+      chance *= safeRemaining / tilesRemaining;
     }
     
-    // Final multiplier = inverse of total odds × (1 - house edge)
-    const multiplier = (1 / totalSurvivalProbability) * (1 - houseEdge);
+    // Final multiplier = inverse of chance × (1 - house edge)
+    const multiplier = (1 / chance) * (1 - houseEdge);
     
     return multiplier;
   };

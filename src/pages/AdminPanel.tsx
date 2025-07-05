@@ -9,8 +9,10 @@ import { toast } from 'sonner';
 
 interface User {
   id: string;
+  email: string;
   username: string;
   balance: number;
+  created_at: string;
 }
 
 interface CoinKey {
@@ -45,24 +47,89 @@ const AdminPanel = () => {
 
   const fetchUsers = async () => {
     try {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username');
+      console.log('Fetching users for admin panel...');
       
-      const { data: balances } = await supabase
+      // Get all users from auth (this requires service role but we'll try with profiles)
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, username, created_at');
+      
+      if (profileError) {
+        console.error('Error fetching profiles:', profileError);
+        toast.error('Failed to fetch user profiles');
+        return;
+      }
+
+      // Get user balances
+      const { data: balances, error: balanceError } = await supabase
         .from('user_balances')
         .select('id, balance');
 
-      if (profiles && balances) {
-        const combined = profiles.map(profile => ({
-          id: profile.id,
-          username: profile.username || 'Unknown',
-          balance: balances.find(b => b.id === profile.id)?.balance || 0
-        }));
-        setUsers(combined);
+      if (balanceError) {
+        console.error('Error fetching balances:', balanceError);
+        toast.error('Failed to fetch user balances');
+        return;
       }
+
+      console.log('Profiles:', profiles);
+      console.log('Balances:', balances);
+
+      // For users without profiles, we need to handle them differently
+      // Let's also try to get auth users if possible (this might not work with RLS)
+      let authUsers = [];
+      try {
+        // This might fail due to RLS, but let's try
+        const { data: authData } = await supabase.auth.admin.listUsers();
+        if (authData?.users) {
+          authUsers = authData.users;
+        }
+      } catch (error) {
+        console.log('Cannot access auth users directly, using profiles only');
+      }
+
+      // Combine the data
+      const combined: User[] = [];
+
+      // First add users from profiles
+      if (profiles) {
+        profiles.forEach(profile => {
+          const balance = balances?.find(b => b.id === profile.id)?.balance || 0;
+          combined.push({
+            id: profile.id,
+            email: profile.username || 'Unknown', // Using username as email fallback
+            username: profile.username || 'Unknown',
+            balance: parseFloat(balance.toString()),
+            created_at: profile.created_at
+          });
+        });
+      }
+
+      // Add users from balances that don't have profiles
+      if (balances) {
+        balances.forEach(balance => {
+          const existingUser = combined.find(u => u.id === balance.id);
+          if (!existingUser) {
+            combined.push({
+              id: balance.id,
+              email: 'No Profile',
+              username: 'No Profile',
+              balance: parseFloat(balance.balance.toString()),
+              created_at: new Date().toISOString()
+            });
+          }
+        });
+      }
+
+      console.log('Combined users:', combined);
+      setUsers(combined);
+
+      if (combined.length === 0) {
+        toast.info('No users found. Users appear after they sign up and create profiles.');
+      }
+
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('Error in fetchUsers:', error);
+      toast.error('Failed to fetch users');
     }
   };
 
@@ -84,16 +151,44 @@ const AdminPanel = () => {
   const updateUserBalance = async (userId: string, newBalance: number) => {
     setLoading(true);
     try {
-      const { error } = await supabase
+      console.log('Updating balance for user:', userId, 'to:', newBalance);
+      
+      // First check if balance record exists
+      const { data: existingBalance } = await supabase
         .from('user_balances')
-        .update({ balance: newBalance })
-        .eq('id', userId);
+        .select('id')
+        .eq('id', userId)
+        .single();
 
-      if (error) throw error;
+      if (existingBalance) {
+        // Update existing balance
+        const { error } = await supabase
+          .from('user_balances')
+          .update({ 
+            balance: newBalance,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', userId);
+
+        if (error) throw error;
+      } else {
+        // Insert new balance record
+        const { error } = await supabase
+          .from('user_balances')
+          .insert([{ 
+            id: userId, 
+            balance: newBalance,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }]);
+
+        if (error) throw error;
+      }
       
       toast.success('User balance updated successfully!');
-      fetchUsers();
+      fetchUsers(); // Refresh the user list
     } catch (error) {
+      console.error('Update balance error:', error);
       toast.error('Failed to update user balance');
     }
     setLoading(false);
@@ -187,12 +282,20 @@ const AdminPanel = () => {
           <h1 className="text-4xl font-bold text-yellow-400 text-center font-mono">
             🔧 Admin Panel
           </h1>
-          <Button
-            onClick={logoutAdmin}
-            className="bg-red-600 hover:bg-red-700 text-white font-mono"
-          >
-            Logout Admin
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={fetchUsers}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-mono"
+            >
+              Refresh Users
+            </Button>
+            <Button
+              onClick={logoutAdmin}
+              className="bg-red-600 hover:bg-red-700 text-white font-mono"
+            >
+              Logout Admin
+            </Button>
+          </div>
         </div>
 
         <Tabs defaultValue="users" className="w-full">
@@ -217,7 +320,7 @@ const AdminPanel = () => {
                     <option value="">Select a user...</option>
                     {users.map(user => (
                       <option key={user.id} value={user.id}>
-                        {user.username} (Balance: {user.balance})
+                        {user.username} ({user.email}) - Balance: {user.balance}
                       </option>
                     ))}
                   </select>
@@ -238,20 +341,31 @@ const AdminPanel = () => {
                   disabled={!selectedUser || loading}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
-                  Update Balance
+                  {loading ? 'Updating...' : 'Update Balance'}
                 </Button>
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-lg font-bold text-white">All Users</h3>
-                <div className="max-h-64 overflow-y-auto space-y-2">
-                  {users.map(user => (
-                    <div key={user.id} className="bg-gray-700 p-3 rounded flex justify-between items-center">
-                      <span className="text-white">{user.username}</span>
-                      <span className="text-yellow-400">{user.balance} coins</span>
-                    </div>
-                  ))}
-                </div>
+                <h3 className="text-lg font-bold text-white">All Users ({users.length})</h3>
+                {users.length === 0 ? (
+                  <div className="text-gray-400 text-center py-8">
+                    <p>No users found.</p>
+                    <p className="text-sm mt-2">Users will appear here after they sign up and use the app.</p>
+                  </div>
+                ) : (
+                  <div className="max-h-64 overflow-y-auto space-y-2">
+                    {users.map(user => (
+                      <div key={user.id} className="bg-gray-700 p-3 rounded flex justify-between items-center">
+                        <div>
+                          <span className="text-white font-semibold">{user.username}</span>
+                          <span className="text-gray-300 text-sm ml-2">({user.email})</span>
+                          <div className="text-xs text-gray-400">ID: {user.id}</div>
+                        </div>
+                        <span className="text-yellow-400 font-bold">{user.balance} coins</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </TabsContent>
