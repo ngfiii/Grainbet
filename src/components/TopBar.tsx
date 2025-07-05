@@ -1,10 +1,12 @@
 
-import { Coins, Plus, Minus, X, LogOut } from 'lucide-react';
+import { Coins, Plus, LogOut, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { RedeemModal } from './RedeemModal';
+import { TipModal } from './TipModal';
+import { Link } from 'react-router-dom';
 
 interface TopBarProps {
   balance: number;
@@ -12,46 +14,29 @@ interface TopBarProps {
   onDeductCoins: (amount: number) => number;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins, onDeductCoins }) => {
+export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins }) => {
   const { signOut, user } = useAuth();
-  const [showCoinModal, setShowCoinModal] = useState(false);
-  const [modalType, setModalType] = useState<'add' | 'deduct'>('add');
-  const [customAmount, setCustomAmount] = useState(100);
+  const [showRedeemModal, setShowRedeemModal] = useState(false);
+  const [showTipModal, setShowTipModal] = useState(false);
   
-  const coinOptions = [5, 10, 20, 50, 100, 500];
-  
-  const handleCoins = (amount: number) => {
-    if (modalType === 'add') {
-      const actualAmount = onAddCoins(amount);
-      if (actualAmount <= 0) {
-        toast.error("You've reached the maximum balance of 6900 coins!");
-      } else {
-        toast.success(`${actualAmount} coins added to your balance!`);
-      }
-    } else {
-      const actualAmount = onDeductCoins(amount);
-      if (actualAmount <= 0) {
-        toast.error("Insufficient balance!");
-      } else {
-        toast.success(`${actualAmount} coins deducted from your balance!`);
-      }
+  const handleRedeemSuccess = (amount: number) => {
+    const actualAmount = onAddCoins(amount);
+    if (actualAmount <= 0) {
+      toast.error("You've reached the maximum balance of 6900 coins!");
     }
-    setShowCoinModal(false);
   };
 
-  const handleCustomAmount = () => {
-    handleCoins(customAmount);
-  };
-
-  const openModal = (type: 'add' | 'deduct') => {
-    setModalType(type);
-    setShowCoinModal(true);
+  const handleTipSent = (amount: number) => {
+    // Deduct from current user's balance
+    onAddCoins(-amount);
   };
 
   const handleSignOut = async () => {
     await signOut();
     toast.success('Signed out successfully!');
   };
+
+  const isAdmin = user?.email === 'ngfi' || user?.id === 'ngfi';
 
   return (
     <>
@@ -67,20 +52,35 @@ export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins, onDeductCoi
           </div>
           
           <Button 
-            onClick={() => openModal('add')}
+            onClick={() => setShowRedeemModal(true)}
             className="bg-green-600 hover:bg-green-700 text-white transition-all duration-200 font-mono"
           >
             <Plus size={16} className="mr-1" />
-            Add Coins
+            Redeem Coins
           </Button>
 
           <Button 
-            onClick={() => openModal('deduct')}
-            className="bg-red-600 hover:bg-red-700 text-white transition-all duration-200 font-mono"
+            onClick={() => setShowTipModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200 font-mono"
           >
-            <Minus size={16} className="mr-1" />
-            Remove Coins
+            <Plus size={16} className="mr-1" />
+            Tip User
           </Button>
+
+          <Link to="/credits">
+            <Button className="bg-purple-600 hover:bg-purple-700 text-white transition-all duration-200 font-mono">
+              <Circle size={16} className="mr-1" />
+              Credits
+            </Button>
+          </Link>
+
+          {isAdmin && (
+            <Link to="/admin">
+              <Button className="bg-red-600 hover:bg-red-700 text-white transition-all duration-200 font-mono">
+                Admin Panel
+              </Button>
+            </Link>
+          )}
 
           {user && (
             <Button
@@ -94,59 +94,17 @@ export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins, onDeductCoi
         </div>
       </div>
 
-      {/* Coin Modal */}
-      {showCoinModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
-          <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 max-w-sm w-full mx-4 animate-scale-in">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-yellow-400 font-mono">
-                {modalType === 'add' ? 'Add Coins' : 'Remove Coins'}
-              </h3>
-              <button 
-                onClick={() => setShowCoinModal(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              {coinOptions.map((amount) => (
-                <Button
-                  key={amount}
-                  onClick={() => handleCoins(amount)}
-                  className={`${
-                    modalType === 'add' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
-                  } text-white font-bold py-3 transition-all duration-200 hover:scale-105 font-mono`}
-                >
-                  {amount} Coins
-                </Button>
-              ))}
-            </div>
+      <RedeemModal 
+        isOpen={showRedeemModal} 
+        onClose={() => setShowRedeemModal(false)}
+        onSuccess={handleRedeemSuccess}
+      />
 
-            <div className="border-t border-gray-600 pt-4">
-              <label className="block text-sm font-medium mb-2 font-mono">Custom Amount</label>
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  value={customAmount}
-                  onChange={(e) => setCustomAmount(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="bg-gray-700 border-gray-600 text-white font-mono"
-                  max={modalType === 'add' ? 6900 - balance : balance}
-                />
-                <Button
-                  onClick={handleCustomAmount}
-                  className={`${
-                    modalType === 'add' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
-                  } text-white font-mono`}
-                >
-                  {modalType === 'add' ? 'Add' : 'Remove'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <TipModal 
+        isOpen={showTipModal} 
+        onClose={() => setShowTipModal(false)}
+        onTipSent={handleTipSent}
+      />
     </>
   );
 };

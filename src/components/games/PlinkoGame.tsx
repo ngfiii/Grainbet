@@ -16,6 +16,7 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
   const [ballHistory, setBallHistory] = useState<Array<{x: number, y: number, id: number}>>([]);
   const [lastResult, setLastResult] = useState<{ slot: number; multiplier: number } | null>(null);
   const [lastWin, setLastWin] = useState<number | null>(null);
+  const [springSlots, setSpringSlots] = useState<number[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
 
@@ -54,7 +55,7 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     const width = canvas.width;
-    const height = canvas.height;
+    const height = canvas.height - 100; // Leave space for multiplier slots
     
     // Background gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
@@ -67,7 +68,7 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     const pegRadius = 6;
     const startY = 60;
     const pegSpacing = (width - 100) / (rows + 1);
-    const rowHeight = (height - 200) / rows;
+    const rowHeight = (height - 150) / rows;
     
     for (let row = 0; row < rows; row++) {
       const pegsInRow = row + 2;
@@ -117,17 +118,7 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
   };
 
   useEffect(() => {
-    const animate = () => {
-      drawBoard();
-      requestAnimationFrame(animate);
-    };
-    animate();
-    
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
+    drawBoard();
   }, [rows, ballHistory]);
 
   const dropBall = async () => {
@@ -138,6 +129,7 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     setLastResult(null);
     setLastWin(null);
     setBallHistory([]);
+    setSpringSlots([]);
     
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -145,11 +137,11 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     const ballId = Date.now();
     let x = canvas.width / 2 + (Math.random() - 0.5) * 20;
     const startY = 30;
-    const endY = canvas.height - 80;
+    const endY = canvas.height - 120;
     
     // Physics simulation
     let velocityX = 0;
-    let velocityY = 2;
+    let velocityY = 3;
     let currentY = startY;
     let currentX = x;
     
@@ -171,10 +163,10 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
           const pegY = startY + currentRow * rowHeight;
           
           const distance = Math.sqrt((currentX - pegX) ** 2 + (currentY - pegY) ** 2);
-          if (distance < 12) {
+          if (distance < 16) {
             // Bounce off peg
-            velocityX += (Math.random() - 0.5) * 4;
-            velocityX *= 0.8; // Damping
+            velocityX += (Math.random() - 0.5) * 6;
+            velocityX *= 0.85; // Damping
             break;
           }
         }
@@ -203,9 +195,13 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
         const multiplier = multipliers[finalSlot];
         setLastResult({ slot: finalSlot, multiplier });
         
-        const winAmount = betAmount * multiplier;
-        setLastWin(winAmount);
-        onUpdateBalance(winAmount);
+        // Trigger spring animation
+        setSpringSlots([finalSlot]);
+        setTimeout(() => setSpringSlots([]), 800);
+        
+        const profit = betAmount * (multiplier - 1); // Only profit
+        setLastWin(profit);
+        onUpdateBalance(profit);
         
         setIsDropping(false);
         setBallHistory([]);
@@ -289,7 +285,7 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
         </div>
 
         {/* Plinko Board */}
-        <div className="mb-6">
+        <div className="mb-4 relative">
           <canvas
             ref={canvasRef}
             width={600}
@@ -298,13 +294,13 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
           />
         </div>
 
-        {/* Multiplier Slots */}
+        {/* Multiplier Slots - Moved up closer to board */}
         <div className="grid gap-1 mb-6" style={{gridTemplateColumns: `repeat(${multipliers.length}, minmax(0, 1fr))`}}>
           {multipliers.map((multiplier, index) => (
             <div
               key={index}
               className={cn(
-                "text-center p-2 rounded text-sm font-bold font-mono",
+                "text-center p-2 rounded text-sm font-bold font-mono transition-transform duration-300",
                 multiplier >= 10 
                   ? "bg-red-600 text-white" 
                   : multiplier >= 2 
@@ -314,7 +310,8 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
                   : multiplier >= 0.5
                   ? "bg-green-600 text-white"
                   : "bg-gray-600 text-white",
-                lastResult?.slot === index && "ring-2 ring-yellow-400 animate-pulse"
+                lastResult?.slot === index && "ring-2 ring-yellow-400 animate-pulse",
+                springSlots.includes(index) && "animate-bounce scale-110"
               )}
             >
               {multiplier}x
@@ -328,13 +325,13 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
             <div className="text-2xl font-bold mb-2 font-mono">
               Ball landed in {lastResult.multiplier}x slot!
             </div>
-            {lastWin && (
+            {lastWin !== null && (
               <div className={cn(
                 "text-xl font-bold font-mono",
-                lastWin >= betAmount ? "text-green-400" : "text-red-400"
+                lastWin > 0 ? "text-green-400" : "text-red-400"
               )}>
-                {lastWin >= betAmount ? '🎉 WIN: ' : '💔 LOSS: '}
-                {lastWin.toFixed(0)} coins
+                {lastWin > 0 ? '🎉 PROFIT: ' : '💔 LOSS: '}
+                {Math.abs(lastWin).toFixed(0)} coins
               </div>
             )}
           </div>

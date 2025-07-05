@@ -89,13 +89,20 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     if (revealed === 0) return 1;
     
     const safeSpots = 25 - mines;
-    let multiplier = 1;
+    const maxReveals = Math.min(revealed, safeSpots);
     
-    for (let i = 0; i < revealed; i++) {
-      multiplier *= safeSpots / (safeSpots - i);
+    // Fixed multiplier calculation based on probability
+    let multiplier = 1;
+    for (let i = 0; i < maxReveals; i++) {
+      const remainingSafe = safeSpots - i;
+      const remainingTotal = 25 - i;
+      const chance = remainingSafe / remainingTotal;
+      multiplier *= (1 / chance);
     }
     
-    return multiplier;
+    // Cap multiplier to reasonable limits based on mines
+    const maxMultiplier = mines === 1 ? 24 : mines === 2 ? 50 : mines === 3 ? 100 : 200;
+    return Math.min(multiplier, maxMultiplier);
   };
 
   const startGame = () => {
@@ -157,10 +164,10 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   const cashOut = () => {
     if (gameStatus !== 'playing') return;
     
-    const winAmount = betAmount * currentMultiplier;
-    onUpdateBalance(winAmount);
+    const profit = betAmount * (currentMultiplier - 1); // Only the profit
+    onUpdateBalance(profit);
     setGameStatus('finished');
-    setGameResult(`🎉 Cashed out for ${winAmount.toFixed(0)} coins!`);
+    setGameResult(`🎉 Cashed out for ${profit.toFixed(0)} coins profit!`);
   };
 
   const newGame = () => {
@@ -215,7 +222,7 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
           {gameStatus !== 'betting' && (
             <div className="mb-4 text-center bg-gray-700/50 p-4 rounded-lg">
               <div className="text-lg">Multiplier: <span className="text-green-400 font-bold animate-pulse">{currentMultiplier.toFixed(2)}x</span></div>
-              <div className="text-lg">Potential Win: <span className="text-yellow-400 font-bold">{(betAmount * currentMultiplier).toFixed(0)}</span> coins</div>
+              <div className="text-lg">Potential Profit: <span className="text-yellow-400 font-bold">{(betAmount * (currentMultiplier - 1)).toFixed(0)}</span> coins</div>
               <div className="text-sm text-gray-400">Gems Found: {revealedCount} | Mines: {minesCount}</div>
             </div>
           )}
@@ -263,7 +270,7 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
             onClick={cashOut}
             className="w-full bg-green-600 hover:bg-green-700 mb-4 py-3 transition-all duration-200 hover:scale-105 animate-pulse"
           >
-            Cash Out ({(betAmount * currentMultiplier).toFixed(0)} coins)
+            Cash Out ({(betAmount * (currentMultiplier - 1)).toFixed(0)} coins profit)
           </Button>
         )}
 

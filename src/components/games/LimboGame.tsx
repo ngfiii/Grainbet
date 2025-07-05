@@ -48,9 +48,9 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
           setResult(rollResult);
           
           if (rollResult >= targetMultiplier) {
-            const winAmount = betAmount * targetMultiplier;
-            setLastWin(winAmount);
-            onUpdateBalance(winAmount);
+            const profit = betAmount * (targetMultiplier - 1); // Only the profit
+            setLastWin(profit);
+            onUpdateBalance(profit);
           }
           setIsRolling(false);
         }
@@ -120,7 +120,7 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
             Win Chance: {(99 / targetMultiplier).toFixed(2)}%
           </div>
           <div className="text-gray-400 font-mono">
-            Potential win: {(betAmount * targetMultiplier).toFixed(0)} coins
+            Potential profit: {(betAmount * (targetMultiplier - 1)).toFixed(0)} coins
           </div>
         </div>
 
@@ -134,7 +134,7 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
             </div>
             {lastWin && (
               <div className="text-lg text-green-400 animate-pulse font-mono">
-                +{lastWin.toFixed(0)} coins
+                +{lastWin.toFixed(0)} coins profit
               </div>
             )}
           </div>

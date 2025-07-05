@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,9 +46,10 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
     const won = isOver ? rollResult > target[0] : rollResult < target[0];
     
     if (won) {
-      const winAmount = betAmount * calculateMultiplier();
-      setLastWin(winAmount);
-      onUpdateBalance(winAmount);
+      const multiplier = calculateMultiplier();
+      const profit = betAmount * (multiplier - 1); // Only the profit, not the original bet
+      setLastWin(profit);
+      onUpdateBalance(profit);
     }
     
     setIsRolling(false);
@@ -193,7 +193,7 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
             {calculateMultiplier().toFixed(2)}x multiplier
           </div>
           <div className="text-gray-400 font-mono">
-            Potential win: {(betAmount * calculateMultiplier()).toFixed(0)} coins
+            Potential profit: {(betAmount * (calculateMultiplier() - 1)).toFixed(0)} coins
           </div>
         </div>
 
@@ -213,7 +213,7 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
             )}
             {lastWin && (
               <div className="text-lg text-green-400 animate-bounce font-mono">
-                +{lastWin.toFixed(0)} coins
+                +{lastWin.toFixed(0)} coins profit
               </div>
             )}
           </div>
