@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdmin } from '@/contexts/AdminContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Navigate } from 'react-router-dom';
@@ -23,7 +24,7 @@ interface CoinKey {
 
 const AdminPanel = () => {
   const { user } = useAuth();
-  const { isAdminAuthenticated, logout: logoutAdmin } = useAdmin();
+  const { isAdminAuthenticated, logout: logoutAdmin, addTempPassword, removeTempPassword, tempPasswords } = useAdmin();
   const [users, setUsers] = useState<User[]>([]);
   const [keys, setKeys] = useState<CoinKey[]>([]);
   const [selectedUser, setSelectedUser] = useState('');
@@ -34,7 +35,6 @@ const AdminPanel = () => {
   
   // Temp password management
   const [newTempPassword, setNewTempPassword] = useState('');
-  const { addTempPassword, removeTempPassword, tempPasswords } = useAdmin();
 
   useEffect(() => {
     if (isAdminAuthenticated) {
