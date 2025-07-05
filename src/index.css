@@ -112,6 +112,24 @@ All colors MUST be HSL.
   font-family: 'JetBrains Mono', monospace;
 }
 
+/* Mobile touch improvements */
+@media (max-width: 768px) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Improve button touch targets on mobile */
+  button {
+    min-height: 44px;
+  }
+  
+  /* Better spacing for mobile */
+  .mobile-spacing {
+    padding: 1rem;
+  }
+}
+
 /* Custom animations */
 @keyframes fade-in {
   from {
@@ -209,4 +227,22 @@ All colors MUST be HSL.
   font-size: 24px;
   font-weight: bold;
   color: black;
+}
+
+/* Hide Lovable badge */
+div[data-lovable-badge] {
+  display: none !important;
+}
+
+/* Force hide any badge with "lovable" in class or text content */
+[class*="lovable" i] {
+  display: none !important;
+}
+
+/* Mobile viewport fixes */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari specific fixes */
+  .min-h-screen {
+    min-height: -webkit-fill-available;
+  }
 }

@@ -10,9 +10,23 @@ const Index = () => {
   const [currentGame, setCurrentGame] = useState<Game>('dashboard');
   const [balance, setBalance] = useState(() => {
     const saved = localStorage.getItem('grainbet-balance');
-    return saved ? parseFloat(saved) : 1000; // Start with 1000 virtual coins
+    return saved ? parseFloat(saved) : 1000;
   });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth < 768) {
+        setSidebarCollapsed(true);
+      }
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('grainbet-balance', balance.toString());
@@ -31,7 +45,15 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex">
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col md:flex-row">
+      {/* Mobile overlay for sidebar */}
+      {isMobile && !sidebarCollapsed && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => setSidebarCollapsed(true)}
+        />
+      )}
+      
       <Sidebar 
         currentGame={currentGame}
         onGameSelect={setCurrentGame}
@@ -39,19 +61,21 @@ const Index = () => {
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
       
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         <TopBar 
           balance={balance}
           onAddCoins={addCoins}
           onDeductCoins={deductCoins}
         />
         
-        <GameArea 
-          currentGame={currentGame}
-          balance={balance}
-          onUpdateBalance={updateBalance}
-          onGameSelect={setCurrentGame}
-        />
+        <div className="flex-1 overflow-auto">
+          <GameArea 
+            currentGame={currentGame}
+            balance={balance}
+            onUpdateBalance={updateBalance}
+            onGameSelect={setCurrentGame}
+          />
+        </div>
       </div>
     </div>
   );
