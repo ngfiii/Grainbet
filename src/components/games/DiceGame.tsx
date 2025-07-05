@@ -38,8 +38,8 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
     // Deduct bet
     onUpdateBalance(-betAmount);
     
-    // Simulate rolling animation
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Faster rolling animation - reduced from 1000ms to 300ms
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     const rollResult = Math.random() * 100;
     setResult(rollResult);

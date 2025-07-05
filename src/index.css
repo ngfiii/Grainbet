@@ -229,14 +229,44 @@ All colors MUST be HSL.
   color: black;
 }
 
-/* Hide Lovable badge */
-div[data-lovable-badge] {
+/* Hide Lovable badge - comprehensive approach */
+div[data-lovable-badge],
+[data-lovable-badge],
+div[class*="lovable" i],
+[class*="lovable" i],
+a[href*="lovable" i],
+iframe[src*="lovable" i],
+button[class*="lovable" i],
+span[class*="lovable" i] {
   display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  z-index: -9999 !important;
+  pointer-events: none !important;
 }
 
-/* Force hide any badge with "lovable" in class or text content */
-[class*="lovable" i] {
+/* Additional selectors to catch any remaining badges */
+*[id*="lovable" i],
+*[data-testid*="lovable" i],
+*[aria-label*="lovable" i],
+*[title*="lovable" i] {
   display: none !important;
+  visibility: hidden !important;
+}
+
+/* Hide any text content containing "lovable" */
+*:not(script):not(style) {
+  &:has-text("lovable"),
+  &:has-text("Lovable"),
+  &:has-text("LOVABLE") {
+    display: none !important;
+  }
 }
 
 /* Mobile viewport fixes */
