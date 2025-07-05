@@ -3,6 +3,9 @@ import { Menu, X, Home, Dice1, Rocket, Spade, Bomb, Target, Circle, Settings } f
 import { cn } from '@/lib/utils';
 import type { Game } from '@/pages/Index';
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { AdminAuthModal } from './AdminAuthModal';
+import { useNavigate } from 'react-router-dom';
 
 interface SidebarProps {
   currentGame: Game;
@@ -27,6 +30,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   collapsed,
   onToggle
 }) => {
+  const [showAdminAuth, setShowAdminAuth] = useState(false);
+  const navigate = useNavigate();
+
+  const handleAdminClick = () => {
+    setShowAdminAuth(true);
+  };
+
+  const handleAdminAuthSuccess = () => {
+    navigate('/admin');
+  };
+
   return (
     <>
       {/* Mobile overlay */}
@@ -79,22 +93,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </li>
             ))}
             
-            {/* Admin Panel Link - Always visible */}
+            {/* Admin Panel - Always visible but requires authentication */}
             <li>
-              <Link to="/admin">
-                <button
-                  className="w-full flex items-center p-3 rounded-lg transition-all duration-200 hover:bg-gray-700 hover:scale-105 text-gray-300 hover:text-white"
-                >
-                  <span className="text-xl mr-3">⚙️</span>
-                  {!collapsed && (
-                    <span className="font-medium">Admin Panel</span>
-                  )}
-                </button>
-              </Link>
+              <button
+                onClick={handleAdminClick}
+                className="w-full flex items-center p-3 rounded-lg transition-all duration-200 hover:bg-gray-700 hover:scale-105 text-gray-300 hover:text-white"
+              >
+                <span className="text-xl mr-3">⚙️</span>
+                {!collapsed && (
+                  <span className="font-medium">Admin Panel</span>
+                )}
+              </button>
             </li>
           </ul>
         </nav>
       </div>
+
+      <AdminAuthModal
+        isOpen={showAdminAuth}
+        onClose={() => setShowAdminAuth(false)}
+        onSuccess={handleAdminAuthSuccess}
+      />
     </>
   );
 };
