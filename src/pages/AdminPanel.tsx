@@ -13,6 +13,7 @@ interface User {
   username: string;
   balance: number;
   created_at: string;
+  last_sign_in_at?: string;
 }
 
 interface CoinKey {
@@ -42,93 +43,118 @@ const AdminPanel = () => {
     if (isAdminAuthenticated) {
       fetchUsers();
       fetchKeys();
+      
+      // Set up real-time updates for users
+      const interval = setInterval(fetchUsers, 30000); // Refresh every 30 seconds
+      return () => clearInterval(interval);
     }
   }, [isAdminAuthenticated]);
 
   const fetchUsers = async () => {
     try {
-      console.log('Fetching users for admin panel...');
+      console.log('🔍 Fetching all users for admin panel...');
       
-      // Get all users from auth (this requires service role but we'll try with profiles)
+      // Get all profiles first
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
         .select('id, username, created_at');
       
       if (profileError) {
-        console.error('Error fetching profiles:', profileError);
-        toast.error('Failed to fetch user profiles');
-        return;
+        console.error('❌ Error fetching profiles:', profileError);
       }
 
-      // Get user balances
+      // Get all user balances
       const { data: balances, error: balanceError } = await supabase
         .from('user_balances')
-        .select('id, balance');
+        .select('id, balance, created_at, updated_at');
 
       if (balanceError) {
-        console.error('Error fetching balances:', balanceError);
-        toast.error('Failed to fetch user balances');
-        return;
+        console.error('❌ Error fetching balances:', balanceError);
       }
 
-      console.log('Profiles:', profiles);
-      console.log('Balances:', balances);
+      console.log('📋 Found profiles:', profiles?.length || 0);
+      console.log('💰 Found balances:', balances?.length || 0);
 
-      // For users without profiles, we need to handle them differently
-      // Let's also try to get auth users if possible (this might not work with RLS)
-      let authUsers = [];
-      try {
-        // This might fail due to RLS, but let's try
-        const { data: authData } = await supabase.auth.admin.listUsers();
-        if (authData?.users) {
-          authUsers = authData.users;
-        }
-      } catch (error) {
-        console.log('Cannot access auth users directly, using profiles only');
-      }
+      // Combine profiles and balances data
+      const userMap = new Map<string, User>();
 
-      // Combine the data
-      const combined: User[] = [];
-
-      // First add users from profiles
+      // Add users from profiles
       if (profiles) {
         profiles.forEach(profile => {
-          const balance = balances?.find(b => b.id === profile.id)?.balance || 0;
-          combined.push({
+          userMap.set(profile.id, {
             id: profile.id,
-            email: profile.username || 'Unknown', // Using username as email fallback
-            username: profile.username || 'Unknown',
-            balance: parseFloat(balance.toString()),
-            created_at: profile.created_at
+            email: profile.username || 'No Email',
+            username: profile.username || 'No Username',
+            balance: 0,
+            created_at: profile.created_at,
+            last_sign_in_at: undefined
           });
         });
       }
 
-      // Add users from balances that don't have profiles
+      // Add balance data
       if (balances) {
         balances.forEach(balance => {
-          const existingUser = combined.find(u => u.id === balance.id);
-          if (!existingUser) {
-            combined.push({
+          const existingUser = userMap.get(balance.id);
+          if (existingUser) {
+            existingUser.balance = parseFloat(balance.balance.toString());
+          } else {
+            // User has balance but no profile - create entry
+            userMap.set(balance.id, {
               id: balance.id,
-              email: 'No Profile',
-              username: 'No Profile',
+              email: 'No Profile Set',
+              username: 'No Profile Set',
               balance: parseFloat(balance.balance.toString()),
-              created_at: new Date().toISOString()
+              created_at: balance.created_at
             });
           }
         });
       }
 
-      console.log('Combined users:', combined);
-      setUsers(combined);
+      // Try to get additional user data from auth (this might be limited by RLS)
+      try {
+        // This is a workaround - we'll use the service to get user emails if possible
+        const { data: authUsers } = await supabase.auth.admin.listUsers();
+        if (authUsers?.users) {
+          console.log('🔐 Found auth users:', authUsers.users.length);
+          authUsers.users.forEach(authUser => {
+            const existingUser = userMap.get(authUser.id);
+            if (existingUser) {
+              existingUser.email = authUser.email || existingUser.email;
+              existingUser.last_sign_in_at = authUser.last_sign_in_at;
+            } else {
+              // New user not in our tables yet
+              userMap.set(authUser.id, {
+                id: authUser.id,
+                email: authUser.email || 'Unknown',
+                username: authUser.user_metadata?.username || authUser.email || 'Unknown',
+                balance: 1000, // Default balance
+                created_at: authUser.created_at || new Date().toISOString(),
+                last_sign_in_at: authUser.last_sign_in_at
+              });
+            }
+          });
+        }
+      } catch (authError) {
+        console.log('⚠️ Cannot access auth.users directly (expected in production)');
+        // This is expected - auth.users is protected, so we'll work with what we have
+      }
 
-      if (combined.length === 0) {
-        toast.info('No users found. Users appear after they sign up and create profiles.');
+      const allUsers = Array.from(userMap.values()).sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      console.log('✅ Combined user data:', allUsers.length);
+      setUsers(allUsers);
+
+      if (allUsers.length === 0) {
+        toast.info('No users found. Users will appear after they sign up and create profiles.');
+      } else {
+        console.log('👥 Loaded users:', allUsers.map(u => ({ id: u.id, email: u.email, balance: u.balance })));
       }
 
     } catch (error) {
-      console.error('Error in fetchUsers:', error);
+      console.error('💥 Error in fetchUsers:', error);
       toast.error('Failed to fetch users');
     }
   };
@@ -151,9 +177,9 @@ const AdminPanel = () => {
   const updateUserBalance = async (userId: string, newBalance: number) => {
     setLoading(true);
     try {
-      console.log('Updating balance for user:', userId, 'to:', newBalance);
+      console.log('💰 Updating balance for user:', userId, 'to:', newBalance);
       
-      // First check if balance record exists
+      // Check if balance record exists
       const { data: existingBalance } = await supabase
         .from('user_balances')
         .select('id')
@@ -185,10 +211,10 @@ const AdminPanel = () => {
         if (error) throw error;
       }
       
-      toast.success('User balance updated successfully!');
+      toast.success(`✅ User balance updated to ${newBalance} coins!`);
       fetchUsers(); // Refresh the user list
     } catch (error) {
-      console.error('Update balance error:', error);
+      console.error('❌ Update balance error:', error);
       toast.error('Failed to update user balance');
     }
     setLoading(false);
@@ -287,7 +313,7 @@ const AdminPanel = () => {
               onClick={fetchUsers}
               className="bg-blue-600 hover:bg-blue-700 text-white font-mono"
             >
-              Refresh Users
+              🔄 Refresh Users
             </Button>
             <Button
               onClick={logoutAdmin}
@@ -300,14 +326,14 @@ const AdminPanel = () => {
 
         <Tabs defaultValue="users" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-8">
-            <TabsTrigger value="users">User Management</TabsTrigger>
-            <TabsTrigger value="keys">Key Management</TabsTrigger>
-            <TabsTrigger value="passwords">Temp Passwords</TabsTrigger>
+            <TabsTrigger value="users">👥 User Management</TabsTrigger>
+            <TabsTrigger value="keys">🔑 Key Management</TabsTrigger>
+            <TabsTrigger value="passwords">🔐 Temp Passwords</TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="space-y-6">
             <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <h2 className="text-2xl font-bold text-white mb-4">User Balance Control</h2>
+              <h2 className="text-2xl font-bold text-white mb-4">💰 User Balance Control</h2>
               
               <div className="grid gap-4 mb-6">
                 <div>
@@ -320,7 +346,7 @@ const AdminPanel = () => {
                     <option value="">Select a user...</option>
                     {users.map(user => (
                       <option key={user.id} value={user.id}>
-                        {user.username} ({user.email}) - Balance: {user.balance}
+                        {user.username} ({user.email}) - {user.balance} coins
                       </option>
                     ))}
                   </select>
@@ -341,27 +367,39 @@ const AdminPanel = () => {
                   disabled={!selectedUser || loading}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
-                  {loading ? 'Updating...' : 'Update Balance'}
+                  {loading ? '⏳ Updating...' : '💰 Update Balance'}
                 </Button>
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-lg font-bold text-white">All Users ({users.length})</h3>
+                <h3 className="text-lg font-bold text-white">👥 All Users ({users.length})</h3>
                 {users.length === 0 ? (
                   <div className="text-gray-400 text-center py-8">
                     <p>No users found.</p>
-                    <p className="text-sm mt-2">Users will appear here after they sign up and use the app.</p>
+                    <p className="text-sm mt-2">Users will appear here after they sign up.</p>
                   </div>
                 ) : (
                   <div className="max-h-64 overflow-y-auto space-y-2">
                     {users.map(user => (
                       <div key={user.id} className="bg-gray-700 p-3 rounded flex justify-between items-center">
-                        <div>
-                          <span className="text-white font-semibold">{user.username}</span>
-                          <span className="text-gray-300 text-sm ml-2">({user.email})</span>
-                          <div className="text-xs text-gray-400">ID: {user.id}</div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-semibold">{user.username}</span>
+                            <span className="text-gray-300 text-sm">({user.email})</span>
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            ID: {user.id.substring(0, 8)}...
+                          </div>
+                          {user.last_sign_in_at && (
+                            <div className="text-xs text-gray-500">
+                              Last login: {new Date(user.last_sign_in_at).toLocaleString()}
+                            </div>
+                          )}
                         </div>
-                        <span className="text-yellow-400 font-bold">{user.balance} coins</span>
+                        <div className="text-right">
+                          <span className="text-yellow-400 font-bold text-lg">{user.balance}</span>
+                          <div className="text-xs text-gray-400">coins</div>
+                        </div>
                       </div>
                     ))}
                   </div>
