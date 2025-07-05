@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { RedeemModal } from './RedeemModal';
-import { TipModal } from './TipModal';
 import { Link } from 'react-router-dom';
 
 interface TopBarProps {
@@ -17,18 +16,12 @@ interface TopBarProps {
 export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins }) => {
   const { signOut, user } = useAuth();
   const [showRedeemModal, setShowRedeemModal] = useState(false);
-  const [showTipModal, setShowTipModal] = useState(false);
   
   const handleRedeemSuccess = (amount: number) => {
     const actualAmount = onAddCoins(amount);
     if (actualAmount <= 0) {
       toast.error("You've reached the maximum balance of 6900 coins!");
     }
-  };
-
-  const handleTipSent = (amount: number) => {
-    // Deduct from current user's balance
-    onAddCoins(-amount);
   };
 
   const handleSignOut = async () => {
@@ -57,14 +50,6 @@ export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins }) => {
           >
             <Plus size={16} className="mr-1" />
             Redeem Coins
-          </Button>
-
-          <Button 
-            onClick={() => setShowTipModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200 font-mono"
-          >
-            <Plus size={16} className="mr-1" />
-            Tip User
           </Button>
 
           <Link to="/credits">
@@ -98,12 +83,6 @@ export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins }) => {
         isOpen={showRedeemModal} 
         onClose={() => setShowRedeemModal(false)}
         onSuccess={handleRedeemSuccess}
-      />
-
-      <TipModal 
-        isOpen={showTipModal} 
-        onClose={() => setShowTipModal(false)}
-        onTipSent={handleTipSent}
       />
     </>
   );
