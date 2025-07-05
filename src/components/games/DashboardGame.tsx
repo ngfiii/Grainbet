@@ -1,8 +1,15 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RedemptionTester } from '@/components/RedemptionTester';
+import type { Game } from '@/pages/Index';
 
-const DashboardGame = () => {
+interface DashboardGameProps {
+  balance: number;
+  onUpdateBalance: (amount: number) => void;
+  onGameSelect: (game: Game) => void;
+}
+
+const DashboardGame: React.FC<DashboardGameProps> = ({ onGameSelect }) => {
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -11,7 +18,10 @@ const DashboardGame = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card className="bg-gray-800 border-gray-700">
+        <Card 
+          className="bg-gray-800 border-gray-700 cursor-pointer hover:bg-gray-750 transition-colors"
+          onClick={() => onGameSelect('dice')}
+        >
           <CardHeader>
             <CardTitle className="text-yellow-400 font-mono">🎲 Dice</CardTitle>
             <CardDescription className="font-mono">Roll the dice and win big!</CardDescription>
@@ -23,7 +33,10 @@ const DashboardGame = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gray-800 border-gray-700">
+        <Card 
+          className="bg-gray-800 border-gray-700 cursor-pointer hover:bg-gray-750 transition-colors"
+          onClick={() => onGameSelect('limbo')}
+        >
           <CardHeader>
             <CardTitle className="text-yellow-400 font-mono">🚀 Limbo</CardTitle>
             <CardDescription className="font-mono">How high can you go?</CardDescription>
@@ -35,7 +48,10 @@ const DashboardGame = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gray-800 border-gray-700">
+        <Card 
+          className="bg-gray-800 border-gray-700 cursor-pointer hover:bg-gray-750 transition-colors"
+          onClick={() => onGameSelect('blackjack')}
+        >
           <CardHeader>
             <CardTitle className="text-yellow-400 font-mono">🃏 Blackjack</CardTitle>
             <CardDescription className="font-mono">Beat the dealer!</CardDescription>
@@ -47,7 +63,10 @@ const DashboardGame = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gray-800 border-gray-700">
+        <Card 
+          className="bg-gray-800 border-gray-700 cursor-pointer hover:bg-gray-750 transition-colors"
+          onClick={() => onGameSelect('mines')}
+        >
           <CardHeader>
             <CardTitle className="text-yellow-400 font-mono">💣 Mines</CardTitle>
             <CardDescription className="font-mono">Navigate the minefield!</CardDescription>
@@ -59,7 +78,10 @@ const DashboardGame = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gray-800 border-gray-700">
+        <Card 
+          className="bg-gray-800 border-gray-700 cursor-pointer hover:bg-gray-750 transition-colors"
+          onClick={() => onGameSelect('keno')}
+        >
           <CardHeader>
             <CardTitle className="text-yellow-400 font-mono">🎯 Keno</CardTitle>
             <CardDescription className="font-mono">Pick your lucky numbers!</CardDescription>
@@ -71,7 +93,10 @@ const DashboardGame = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gray-800 border-gray-700">
+        <Card 
+          className="bg-gray-800 border-gray-700 cursor-pointer hover:bg-gray-750 transition-colors"
+          onClick={() => onGameSelect('plinko')}
+        >
           <CardHeader>
             <CardTitle className="text-yellow-400 font-mono">🏀 Plinko</CardTitle>
             <CardDescription className="font-mono">Drop and win!</CardDescription>
