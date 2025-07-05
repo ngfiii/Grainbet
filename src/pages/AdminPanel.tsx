@@ -6,7 +6,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAdmin } from '@/contexts/AdminContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Navigate } from 'react-router-dom';
 
 interface User {
   id: string;
@@ -31,6 +30,7 @@ const AdminPanel = () => {
   const [coinAmount, setCoinAmount] = useState(100);
   const [keyAmount, setKeyAmount] = useState(100);
   const [customKeyAmount, setCustomKeyAmount] = useState(100);
+  const [keyLength, setKeyLength] = useState(12);
   const [loading, setLoading] = useState(false);
   
   // Temp password management
@@ -42,9 +42,6 @@ const AdminPanel = () => {
       fetchKeys();
     }
   }, [isAdminAuthenticated]);
-
-  // Check if user is admin (ngfi) - case insensitive
-  const isAdmin = user?.email?.toLowerCase() === 'ngfi' || user?.id === 'ngfi';
 
   const fetchUsers = async () => {
     try {
@@ -105,7 +102,12 @@ const AdminPanel = () => {
   const generateKey = async (amount: number) => {
     setLoading(true);
     try {
-      const code = Math.random().toString(36).substring(2, 15).toUpperCase();
+      // Generate a random code based on the specified length
+      const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let code = '';
+      for (let i = 0; i < keyLength; i++) {
+        code += characters.charAt(Math.floor(Math.random() * characters.length));
+      }
       
       const { error } = await supabase
         .from('coin_keys')
@@ -116,6 +118,7 @@ const AdminPanel = () => {
       toast.success(`Key generated: ${code}`);
       fetchKeys();
     } catch (error) {
+      console.error('Generate key error:', error);
       toast.error('Failed to generate key');
     }
     setLoading(false);
@@ -258,6 +261,19 @@ const AdminPanel = () => {
               <h2 className="text-2xl font-bold text-white mb-4">Generate Coin Keys</h2>
               
               <div className="grid gap-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Key Length</label>
+                  <Input
+                    type="number"
+                    value={keyLength}
+                    onChange={(e) => setKeyLength(Math.max(6, Math.min(20, parseInt(e.target.value) || 12)))}
+                    className="bg-gray-700 border-gray-600 text-white"
+                    min={6}
+                    max={20}
+                  />
+                  <p className="text-sm text-gray-400 mt-1">Between 6 and 20 characters</p>
+                </div>
+                
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {[5, 10, 50, 100, 500].map(amount => (
                     <Button

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,10 +52,9 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
     
     if (won) {
       const multiplier = calculateMultiplier();
-      const totalPayout = betAmount * multiplier;
-      const profit = totalPayout - betAmount;
+      const profit = betAmount * (multiplier - 1); // Only the profit part
       setLastWin(profit);
-      onUpdateBalance(totalPayout); // Return original bet + profit
+      onUpdateBalance(betAmount + profit); // Return original bet + profit
     }
     
     setIsRolling(false);
