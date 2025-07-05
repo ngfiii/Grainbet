@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdmin } from '@/contexts/AdminContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Search } from 'lucide-react';
 
 interface User {
   id: string;
@@ -28,6 +30,7 @@ const AdminPanel = () => {
   const { user } = useAuth();
   const { isAdminAuthenticated, logout: logoutAdmin, addTempPassword, removeTempPassword, tempPasswords } = useAdmin();
   const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [keys, setKeys] = useState<CoinKey[]>([]);
   const [selectedUser, setSelectedUser] = useState('');
   const [coinAmount, setCoinAmount] = useState(100);
@@ -35,6 +38,7 @@ const AdminPanel = () => {
   const [customKeyAmount, setCustomKeyAmount] = useState(100);
   const [keyLength, setKeyLength] = useState(12);
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Temp password management
   const [newTempPassword, setNewTempPassword] = useState('');
@@ -49,6 +53,20 @@ const AdminPanel = () => {
       return () => clearInterval(interval);
     }
   }, [isAdminAuthenticated]);
+
+  // Filter users based on search term
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredUsers(users);
+    } else {
+      const filtered = users.filter(user => 
+        user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.id.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredUsers(filtered);
+    }
+  }, [users, searchTerm]);
 
   const fetchUsers = async () => {
     try {
@@ -342,37 +360,69 @@ const AdminPanel = () => {
                 </Button>
               </div>
 
-              <div className="space-y-2">
-                <h3 className="text-lg font-bold text-white">👥 All Users ({users.length})</h3>
-                {users.length === 0 ? (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-bold text-white">👥 All Users ({filteredUsers.length})</h3>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      type="text"
+                      placeholder="Search users..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 bg-gray-700 border-gray-600 text-white w-64"
+                    />
+                  </div>
+                </div>
+
+                {filteredUsers.length === 0 ? (
                   <div className="text-gray-400 text-center py-8">
-                    <p>No users found.</p>
-                    <p className="text-sm mt-2">Users will appear here after they sign up.</p>
+                    {searchTerm ? (
+                      <p>No users found matching "{searchTerm}"</p>
+                    ) : (
+                      <>
+                        <p>No users found.</p>
+                        <p className="text-sm mt-2">Users will appear here after they sign up.</p>
+                      </>
+                    )}
                   </div>
                 ) : (
-                  <div className="max-h-64 overflow-y-auto space-y-2">
-                    {users.map(user => (
-                      <div key={user.id} className="bg-gray-700 p-3 rounded flex justify-between items-center">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-white font-semibold">{user.username}</span>
-                            <span className="text-gray-300 text-sm">({user.email})</span>
-                          </div>
-                          <div className="text-xs text-gray-400">
-                            ID: {user.id.substring(0, 8)}...
-                          </div>
-                          {user.last_sign_in_at && (
-                            <div className="text-xs text-gray-500">
-                              Last login: {new Date(user.last_sign_in_at).toLocaleString()}
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <span className="text-yellow-400 font-bold text-lg">{user.balance}</span>
-                          <div className="text-xs text-gray-400">coins</div>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="bg-gray-700 rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-gray-600">
+                          <TableHead className="text-gray-300">Username</TableHead>
+                          <TableHead className="text-gray-300">Email</TableHead>
+                          <TableHead className="text-gray-300">Balance</TableHead>
+                          <TableHead className="text-gray-300">Created</TableHead>
+                          <TableHead className="text-gray-300">User ID</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredUsers.map(user => (
+                          <TableRow key={user.id} className="border-gray-600 hover:bg-gray-600">
+                            <TableCell className="text-white font-semibold">
+                              {user.username}
+                            </TableCell>
+                            <TableCell className="text-gray-300">
+                              {user.email}
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-yellow-400 font-bold text-lg">
+                                {user.balance}
+                              </span>
+                              <span className="text-gray-400 text-sm ml-1">coins</span>
+                            </TableCell>
+                            <TableCell className="text-gray-400 text-sm">
+                              {new Date(user.created_at).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="text-gray-500 text-xs font-mono">
+                              {user.id.substring(0, 8)}...
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
               </div>
