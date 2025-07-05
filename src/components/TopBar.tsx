@@ -1,17 +1,19 @@
 
-import { Coins, Plus, Minus, X } from 'lucide-react';
+import { Coins, Plus, Minus, X, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TopBarProps {
   balance: number;
-  onAddCoins: (amount: number) => void;
-  onDeductCoins: (amount: number) => void;
+  onAddCoins: (amount: number) => number;
+  onDeductCoins: (amount: number) => number;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins, onDeductCoins }) => {
+  const { signOut, user } = useAuth();
   const [showCoinModal, setShowCoinModal] = useState(false);
   const [modalType, setModalType] = useState<'add' | 'deduct'>('add');
   const [customAmount, setCustomAmount] = useState(100);
@@ -20,46 +22,35 @@ export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins, onDeductCoi
   
   const handleCoins = (amount: number) => {
     if (modalType === 'add') {
-      const maxAllowed = 6900 - balance;
-      const actualAmount = Math.min(amount, maxAllowed);
+      const actualAmount = onAddCoins(amount);
       if (actualAmount <= 0) {
         toast.error("You've reached the maximum balance of 6900 coins!");
-        setShowCoinModal(false);
-        return;
+      } else {
+        toast.success(`${actualAmount} coins added to your balance!`);
       }
-      onAddCoins(actualAmount);
-      toast.success(`${actualAmount} coins added to your balance!`);
     } else {
-      const actualAmount = Math.min(amount, balance);
+      const actualAmount = onDeductCoins(amount);
       if (actualAmount <= 0) {
         toast.error("Insufficient balance!");
-        setShowCoinModal(false);
-        return;
+      } else {
+        toast.success(`${actualAmount} coins deducted from your balance!`);
       }
-      onDeductCoins(actualAmount);
-      toast.success(`${actualAmount} coins deducted from your balance!`);
     }
     setShowCoinModal(false);
   };
 
   const handleCustomAmount = () => {
-    if (modalType === 'add') {
-      const maxAllowed = 6900 - balance;
-      const actualAmount = Math.min(customAmount, maxAllowed);
-      if (actualAmount <= 0) {
-        toast.error("You've reached the maximum balance of 6900 coins!");
-        setShowCoinModal(false);
-        return;
-      }
-      handleCoins(actualAmount);
-    } else {
-      handleCoins(customAmount);
-    }
+    handleCoins(customAmount);
   };
 
   const openModal = (type: 'add' | 'deduct') => {
     setModalType(type);
     setShowCoinModal(true);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success('Signed out successfully!');
   };
 
   return (
@@ -90,6 +81,16 @@ export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins, onDeductCoi
             <Minus size={16} className="mr-1" />
             Remove Coins
           </Button>
+
+          {user && (
+            <Button
+              onClick={handleSignOut}
+              className="bg-gray-600 hover:bg-gray-700 text-white transition-all duration-200 font-mono"
+            >
+              <LogOut size={16} className="mr-1" />
+              Sign Out
+            </Button>
+          )}
         </div>
       </div>
 

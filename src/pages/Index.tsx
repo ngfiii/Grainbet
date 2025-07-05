@@ -1,17 +1,20 @@
 
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useBalance } from '@/hooks/useBalance';
 import { Sidebar } from '@/components/Sidebar';
 import { TopBar } from '@/components/TopBar';
 import { GameArea } from '@/components/GameArea';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 export type Game = 'dice' | 'limbo' | 'blackjack' | 'mines' | 'keno' | 'plinko' | 'dashboard';
 
 const Index = () => {
+  const { user, loading: authLoading } = useAuth();
+  const { balance, addCoins, deductCoins, updateBalance } = useBalance();
+  const navigate = useNavigate();
   const [currentGame, setCurrentGame] = useState<Game>('dashboard');
-  const [balance, setBalance] = useState(() => {
-    const saved = localStorage.getItem('grainbet-balance');
-    return saved ? parseFloat(saved) : 1000;
-  });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -28,21 +31,36 @@ const Index = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('grainbet-balance', balance.toString());
-  }, [balance]);
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-2xl font-bold text-yellow-400 mb-4 font-mono">GrainBet</div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto"></div>
+          <p className="mt-4 text-gray-300 font-mono">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const updateBalance = (amount: number) => {
-    setBalance(prev => Math.max(0, prev + amount));
-  };
-
-  const addCoins = (amount: number) => {
-    setBalance(prev => Math.min(6900, prev + amount));
-  };
-
-  const deductCoins = (amount: number) => {
-    setBalance(prev => Math.max(0, prev - amount));
-  };
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <h1 className="text-4xl font-bold text-yellow-400 mb-4 font-mono">Welcome to GrainBet!</h1>
+          <p className="text-gray-300 mb-8 font-mono">
+            Sign up or log in to start playing games and earning coins!
+          </p>
+          <Button
+            onClick={() => navigate('/auth')}
+            className="bg-yellow-600 hover:bg-yellow-700 text-black font-bold py-3 px-8 text-lg font-mono"
+          >
+            Get Started
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col md:flex-row">
