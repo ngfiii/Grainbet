@@ -35,7 +35,7 @@ export const useBalance = () => {
       }
 
       if (data) {
-        setBalance(parseFloat(data.balance));
+        setBalance(parseFloat(data.balance.toString()));
       }
     } catch (error) {
       console.error('Error fetching balance:', error);
