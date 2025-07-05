@@ -80,13 +80,19 @@ export const useBalance = () => {
   const addCoins = (amount: number) => {
     console.log('Adding coins:', amount, 'current balance:', balance);
     const maxAllowed = 6900;
-    const actualAmount = Math.min(amount, maxAllowed - balance);
-    console.log('Actual amount to add:', actualAmount);
+    const newBalance = balance + amount;
     
-    if (actualAmount > 0) {
-      updateBalance(actualAmount);
+    if (newBalance > maxAllowed) {
+      const actualAmount = maxAllowed - balance;
+      console.log('Hit max balance, only adding:', actualAmount);
+      if (actualAmount > 0) {
+        updateBalance(actualAmount);
+      }
+      return actualAmount;
     }
-    return actualAmount;
+    
+    updateBalance(amount);
+    return amount;
   };
 
   const deductCoins = (amount: number) => {
