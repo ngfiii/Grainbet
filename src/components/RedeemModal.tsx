@@ -25,65 +25,83 @@ export const RedeemModal: React.FC<RedeemModalProps> = ({ isOpen, onClose, onSuc
     }
 
     setLoading(true);
-    console.log('Starting redemption process for code:', code.toUpperCase());
+    const upperCode = code.toUpperCase().trim();
+    console.log('=== REDEMPTION START ===');
+    console.log('Code:', upperCode);
+    console.log('User:', user?.id || 'anonymous');
 
     try {
-      // First, let's get the key data
-      const { data: keyData, error: fetchError } = await supabase
+      // Step 1: Get ALL keys with this code (don't filter by used status yet)
+      console.log('Step 1: Fetching key data...');
+      const { data: keys, error: fetchError } = await supabase
         .from('coin_keys')
         .select('*')
-        .eq('code', code.toUpperCase())
-        .single();
+        .eq('code', upperCode);
 
-      console.log('Key fetch result:', { keyData, fetchError });
+      console.log('Fetch result:', { keys, fetchError });
 
-      if (fetchError || !keyData) {
-        console.error('Key not found:', fetchError);
+      if (fetchError) {
+        console.error('Database error:', fetchError);
+        toast.error('Database error occurred');
+        setLoading(false);
+        return;
+      }
+
+      if (!keys || keys.length === 0) {
+        console.log('No keys found with this code');
         toast.error('Invalid redemption code');
         setLoading(false);
         return;
       }
 
-      if (keyData.used) {
-        console.log('Key already used');
-        toast.error('This redemption code has already been used');
+      const key = keys[0]; // Get the first (should be only) key
+      console.log('Found key:', key);
+
+      if (key.used) {
+        console.log('Key is already used');
+        toast.error('This code has already been redeemed');
         setLoading(false);
         return;
       }
 
-      console.log('Valid unused key found, amount:', keyData.amount);
-
-      // Mark the key as used
+      // Step 2: Mark as used with simple update
+      console.log('Step 2: Marking key as used...');
       const { error: updateError } = await supabase
         .from('coin_keys')
         .update({ 
           used: true, 
-          used_by: user?.id || 'anonymous', 
-          used_at: new Date().toISOString() 
+          used_by: user?.id || 'anonymous',
+          used_at: new Date().toISOString()
         })
-        .eq('id', keyData.id);
+        .eq('id', key.id);
 
       if (updateError) {
-        console.error('Failed to update key status:', updateError);
-        toast.error('Failed to redeem key - please try again');
+        console.error('Update error:', updateError);
+        toast.error('Failed to process redemption');
         setLoading(false);
         return;
       }
 
       console.log('Key marked as used successfully');
 
-      // Success! Add coins to balance
-      onSuccess(keyData.amount);
-      toast.success(`Successfully redeemed ${keyData.amount} coins!`);
+      // Step 3: Add coins to balance
+      console.log('Step 3: Adding coins to balance...');
+      const actualAmount = onSuccess(key.amount);
+      
+      console.log('=== REDEMPTION SUCCESS ===');
+      console.log('Amount added:', actualAmount);
+      
+      toast.success(`Successfully redeemed ${key.amount} coins!`);
       setCode('');
       onClose();
 
     } catch (error) {
-      console.error('Redemption error:', error);
-      toast.error('An error occurred while redeeming the key');
+      console.error('=== REDEMPTION ERROR ===');
+      console.error('Unexpected error:', error);
+      toast.error('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   if (!isOpen) return null;
@@ -111,6 +129,11 @@ export const RedeemModal: React.FC<RedeemModalProps> = ({ isOpen, onClose, onSuc
               placeholder="Enter your code..."
               className="bg-gray-700 border-gray-600 text-white font-mono"
               maxLength={20}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !loading && code.trim()) {
+                  redeemKey();
+                }
+              }}
             />
           </div>
 
