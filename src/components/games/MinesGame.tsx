@@ -30,14 +30,29 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     initializeEmptyGrid();
   }, []);
 
-  // Update multiplier when revealed count or mines count changes - FIXED with exact algorithm
+  // CORRECTED: Proper Mines multiplier calculation
   useEffect(() => {
-    if (revealedCount > 0) {
-      const newMultiplier = calculateMinesMultiplier(revealedCount, 25, minesCount, 0.01);
-      setCurrentMultiplier(newMultiplier);
-      console.log(`🎯 MINES MULTIPLIER: ${revealedCount} safe tiles, ${minesCount} mines = ${newMultiplier.toFixed(4)}x`);
+    if (revealedCount > 0 && gameStatus === 'playing') {
+      const totalTiles = 25;
+      const safeTiles = totalTiles - minesCount;
+      
+      // Calculate probability of revealing exactly this many safe tiles
+      let probability = 1;
+      for (let i = 0; i < revealedCount; i++) {
+        probability *= (safeTiles - i) / (totalTiles - i);
+      }
+      
+      // Calculate multiplier with 1% house edge
+      const rawMultiplier = 1 / probability;
+      const houseEdge = 0.01;
+      const finalMultiplier = rawMultiplier * (1 - houseEdge);
+      
+      setCurrentMultiplier(finalMultiplier);
+      
+      console.log(`🎯 MINES: ${revealedCount} safe tiles revealed, ${minesCount} mines total`);
+      console.log(`Probability: ${(probability * 100).toFixed(4)}%, Multiplier: ${finalMultiplier.toFixed(4)}x`);
     }
-  }, [revealedCount, minesCount]);
+  }, [revealedCount, minesCount, gameStatus]);
 
   const initializeEmptyGrid = () => {
     const emptyGrid = Array(5).fill(null).map(() =>
@@ -84,23 +99,6 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     }
 
     return newGrid;
-  };
-
-  // FIXED: Exact Mines multiplier calculation using the provided algorithm
-  const calculateMinesMultiplier = (clickedTiles: number, totalTiles: number = 25, totalMines: number, houseEdge: number = 0.01) => {
-    let probability = 1.0;
-    let remainingMines = totalMines;
-    let remainingTiles = totalTiles;
-
-    for (let i = 0; i < clickedTiles; i++) {
-      // chance this tile is safe
-      probability *= (remainingTiles - remainingMines) / remainingTiles;
-      remainingTiles--;
-    }
-
-    const rawMultiplier = 1 / probability;
-    const finalMultiplier = rawMultiplier * (1 - houseEdge);
-    return finalMultiplier;
   };
 
   const startGame = () => {
@@ -162,8 +160,9 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   const cashOut = () => {
     if (gameStatus !== 'playing') return;
     
-    const profit = betAmount * (currentMultiplier - 1); // Only the profit
-    onUpdateBalance(profit); // Only add the profit
+    const totalPayout = betAmount * currentMultiplier;
+    const profit = totalPayout - betAmount;
+    onUpdateBalance(profit);
     setGameStatus('finished');
     setGameResult(`🎉 Cashed out for ${profit.toFixed(0)} coins profit!`);
   };
@@ -179,36 +178,36 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   return (
     <div className="max-w-2xl mx-auto">
       <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-2xl">
-        <h2 className="text-3xl font-bold text-yellow-400 mb-6 text-center">💣 Mines</h2>
+        <h2 className="text-3xl font-bold text-yellow-400 mb-6 text-center font-mono">💣 Mines</h2>
         
         {gameStatus === 'betting' && (
           <div className="space-y-4 mb-6">
             <div>
-              <label className="block text-sm font-medium mb-2">Bet Amount</label>
+              <label className="block text-sm font-medium mb-2 font-mono">Bet Amount</label>
               <Input
                 type="number"
                 value={betAmount}
                 onChange={(e) => setBetAmount(Math.max(1, parseInt(e.target.value) || 1))}
-                className="bg-gray-700 border-gray-600 text-white transition-all duration-200 focus:ring-2 focus:ring-yellow-400"
+                className="bg-gray-700 border-gray-600 text-white transition-all duration-200 focus:ring-2 focus:ring-yellow-400 font-mono"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium mb-2">Number of Mines</label>
+              <label className="block text-sm font-medium mb-2 font-mono">Number of Mines</label>
               <Input
                 type="number"
                 min="1"
                 max="20"
                 value={minesCount}
                 onChange={(e) => setMinesCount(Math.max(1, Math.min(20, parseInt(e.target.value) || 3)))}
-                className="bg-gray-700 border-gray-600 text-white transition-all duration-200 focus:ring-2 focus:ring-yellow-400"
+                className="bg-gray-700 border-gray-600 text-white transition-all duration-200 focus:ring-2 focus:ring-yellow-400 font-mono"
               />
             </div>
             
             <Button
               onClick={startGame}
               disabled={betAmount > balance}
-              className="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-bold py-3 transition-all duration-200 hover:scale-105"
+              className="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-bold py-3 transition-all duration-200 hover:scale-105 font-mono"
             >
               Start Game ({betAmount} coins)
             </Button>
@@ -219,9 +218,9 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
         <div className="mb-6">
           {gameStatus !== 'betting' && (
             <div className="mb-4 text-center bg-gray-700/50 p-4 rounded-lg">
-              <div className="text-lg">Multiplier: <span className="text-green-400 font-bold animate-pulse">{currentMultiplier.toFixed(4)}x</span></div>
-              <div className="text-lg">Potential Profit: <span className="text-yellow-400 font-bold">{(betAmount * (currentMultiplier - 1)).toFixed(0)}</span> coins</div>
-              <div className="text-sm text-gray-400">Gems Found: {revealedCount} | Mines: {minesCount}</div>
+              <div className="text-lg font-mono">Multiplier: <span className="text-green-400 font-bold animate-pulse">{currentMultiplier.toFixed(4)}x</span></div>
+              <div className="text-lg font-mono">Potential Profit: <span className="text-yellow-400 font-bold">{(betAmount * (currentMultiplier - 1)).toFixed(0)}</span> coins</div>
+              <div className="text-sm text-gray-400 font-mono">Gems Found: {revealedCount} | Mines: {minesCount}</div>
             </div>
           )}
 
@@ -266,7 +265,7 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
         {gameStatus === 'playing' && revealedCount > 0 && (
           <Button
             onClick={cashOut}
-            className="w-full bg-green-600 hover:bg-green-700 mb-4 py-3 transition-all duration-200 hover:scale-105 animate-pulse"
+            className="w-full bg-green-600 hover:bg-green-700 mb-4 py-3 transition-all duration-200 hover:scale-105 animate-pulse font-mono"
           >
             Cash Out ({(betAmount * (currentMultiplier - 1)).toFixed(0)} coins profit)
           </Button>
@@ -275,10 +274,10 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
         {/* Game Result */}
         {gameStatus === 'finished' && (
           <div className="text-center animate-fade-in">
-            <div className="text-xl font-bold mb-4 animate-bounce">{gameResult}</div>
+            <div className="text-xl font-bold mb-4 animate-bounce font-mono">{gameResult}</div>
             <Button 
               onClick={newGame} 
-              className="bg-yellow-600 hover:bg-yellow-700 text-black font-bold px-8 py-3 transition-all duration-200 hover:scale-105"
+              className="bg-yellow-600 hover:bg-yellow-700 text-black font-bold px-8 py-3 transition-all duration-200 hover:scale-105 font-mono"
             >
               New Game
             </Button>

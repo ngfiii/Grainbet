@@ -21,8 +21,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [tempPasswordsData, setTempPasswordsData] = useState<TempPassword[]>([]);
 
-  // Master admin password
-  const MASTER_PASSWORD = 'grainbet2025';
+  // PERMANENT admin password
+  const MASTER_PASSWORD = 'Dahmesisagod12_';
 
   // Check authentication status on mount
   useEffect(() => {

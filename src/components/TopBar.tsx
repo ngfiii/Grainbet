@@ -72,7 +72,7 @@ export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins, onDeductCoi
 
           <Button 
             onClick={handleFreeCoins}
-            className="bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200 font-mono"
+            className="bg-purple-600 hover:bg-purple-700 text-white transition-all duration-200 font-mono"
           >
             <Gift size={16} className="mr-1" />
             Free coins

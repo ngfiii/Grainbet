@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -14,10 +14,11 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   const [result, setResult] = useState<number | null>(null);
   const [isRolling, setIsRolling] = useState(false);
   const [lastWin, setLastWin] = useState<number | null>(null);
-  const [animationMultiplier, setAnimationMultiplier] = useState(0);
+  const [animationNumber, setAnimationNumber] = useState(0);
 
-  // Calculate win chance using the exact RainBet formula
+  // Calculate win chance using exact RainBet formula
   const winChance = 99 / targetMultiplier;
+  const winThreshold = 99 / targetMultiplier;
 
   const roll = async () => {
     if (betAmount < 10 || betAmount > balance) return;
@@ -25,40 +26,37 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     setIsRolling(true);
     setResult(null);
     setLastWin(null);
-    setAnimationMultiplier(0);
+    setAnimationNumber(0);
     
     // Deduct bet
     onUpdateBalance(-betAmount);
     
-    // Generate provably fair random number between 0 and 100
+    // Generate random number between 0.00 and 100.00 (inclusive)
     const randomNumber = Math.random() * 100;
     
-    // Calculate win threshold using RainBet formula
-    const houseEdge = 1; // 1% house edge
-    const winThreshold = (100 - houseEdge) / targetMultiplier;
-    
-    // Determine if player wins
+    // Determine if player wins using RainBet logic
     const playerWins = randomNumber <= winThreshold;
     
     console.log('🎲 LIMBO ROLL:', {
-      randomNumber: randomNumber.toFixed(6),
-      winThreshold: winThreshold.toFixed(6),
+      randomNumber: randomNumber.toFixed(4),
+      winThreshold: winThreshold.toFixed(4),
       targetMultiplier,
       playerWins,
       winChance: winChance.toFixed(2) + '%'
     });
     
-    // Animation - show the random number as the result
-    const animationDuration = 700;
-    const steps = 35;
+    // Animation - smoothly animate to the final result
+    const animationDuration = 800;
+    const steps = 40;
     const stepDuration = animationDuration / steps;
     
     for (let i = 0; i <= steps; i++) {
       setTimeout(() => {
         const progress = i / steps;
-        const easedProgress = 1 - Math.pow(1 - progress, 2);
+        // Use easing function for smooth animation
+        const easedProgress = 1 - Math.pow(1 - progress, 3);
         const currentValue = easedProgress * randomNumber;
-        setAnimationMultiplier(currentValue);
+        setAnimationNumber(currentValue);
         
         if (i === steps) {
           setResult(randomNumber);
@@ -67,7 +65,7 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
             const totalPayout = betAmount * targetMultiplier;
             const profit = totalPayout - betAmount;
             setLastWin(profit);
-            onUpdateBalance(totalPayout); // Return original bet + profit
+            onUpdateBalance(totalPayout);
           }
           setIsRolling(false);
         }
@@ -115,9 +113,9 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
             {isRolling || result !== null ? (
               <span className={`transition-all duration-200 ${
                 isRolling ? 'text-yellow-400 animate-pulse' : 
-                result && result <= (99 / targetMultiplier) ? 'text-green-400' : 'text-red-400'
+                result && result <= winThreshold ? 'text-green-400' : 'text-red-400'
               }`}>
-                {(isRolling ? animationMultiplier : result || 0).toFixed(2)}
+                {(isRolling ? animationNumber : result || 0).toFixed(2)}
               </span>
             ) : (
               <span className="text-gray-500">0.00</span>
@@ -132,13 +130,13 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
           )}
         </div>
 
-        {/* Win Chance */}
+        {/* Win Chance Display */}
         <div className="mb-6 text-center bg-gray-700/50 p-4 rounded-lg border border-gray-600">
           <div className="text-lg text-gray-300 mb-1 font-mono">
             Win Chance: {winChance.toFixed(2)}%
           </div>
           <div className="text-gray-400 font-mono">
-            Win if roll ≤ {(99 / targetMultiplier).toFixed(4)}
+            Win if roll ≤ {winThreshold.toFixed(4)}
           </div>
           <div className="text-gray-400 font-mono">
             Potential profit: {(betAmount * (targetMultiplier - 1)).toFixed(0)} coins
@@ -149,9 +147,9 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
         {!isRolling && result !== null && (
           <div className="mb-6 text-center animate-fade-in">
             <div className={`text-2xl font-bold mb-2 transition-all duration-300 font-mono ${
-              result <= (99 / targetMultiplier) ? 'text-green-400 animate-bounce' : 'text-red-400'
+              result <= winThreshold ? 'text-green-400 animate-bounce' : 'text-red-400'
             }`}>
-              {result <= (99 / targetMultiplier) ? '🎉 WIN!' : '💔 LOSE'}
+              {result <= winThreshold ? '🎉 WIN!' : '💔 LOSE'}
             </div>
             {lastWin && lastWin > 0 && (
               <div className="text-lg text-green-400 animate-pulse font-mono">
