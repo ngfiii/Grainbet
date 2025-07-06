@@ -73,7 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </Button>
         ))}
 
-        {/* Admin Panel Link */}
+        {/* Admin Panel Link - Only show if user is authenticated and is admin */}
         {isAdmin && (
           <Link to="/admin" className="block">
             <Button
