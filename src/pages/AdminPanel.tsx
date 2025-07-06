@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -80,7 +79,7 @@ const AdminPanel = () => {
   // Check if temporary password is valid and not expired
   const checkTempPassword = async (password: string) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('temp_passwords')
         .select('*')
         .eq('password', password)
@@ -147,20 +146,27 @@ const AdminPanel = () => {
 
   const loadUserBalances = async () => {
     try {
-      const { data, error } = await supabase
+      // Use a simpler query without joins for now
+      const { data: balances, error: balancesError } = await supabase
         .from('user_balances')
-        .select(`
-          id,
-          balance,
-          profiles!inner(username)
-        `);
+        .select('*');
 
-      if (error) throw error;
-      const formattedData = (data || []).map(item => ({
-        id: item.id,
-        balance: item.balance,
-        username: item.profiles?.username || 'Unknown'
-      }));
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*');
+
+      if (balancesError) throw balancesError;
+      if (profilesError) throw profilesError;
+
+      const formattedData = (balances || []).map(balance => {
+        const profile = (profiles || []).find(p => p.id === balance.id);
+        return {
+          id: balance.id,
+          balance: balance.balance,
+          username: profile?.username || 'Unknown'
+        };
+      });
+      
       setUserBalances(formattedData);
     } catch (error) {
       console.error('Error loading user balances:', error);
@@ -170,7 +176,7 @@ const AdminPanel = () => {
 
   const loadTempPasswords = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('temp_passwords')
         .select('*')
         .order('created_at', { ascending: false });
@@ -297,7 +303,7 @@ const AdminPanel = () => {
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + tempPasswordExpiry);
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('temp_passwords')
         .insert({
           password,

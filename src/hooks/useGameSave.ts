@@ -12,7 +12,7 @@ export const useGameSave = (gameType: string) => {
     
     try {
       setIsLoading(true);
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('game_saves')
         .upsert({
           user_id: user.id,
@@ -38,7 +38,7 @@ export const useGameSave = (gameType: string) => {
     
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('game_saves')
         .select('game_data')
         .eq('user_id', user.id)
@@ -63,7 +63,7 @@ export const useGameSave = (gameType: string) => {
     if (!user) return;
     
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('game_saves')
         .delete()
         .eq('user_id', user.id)
