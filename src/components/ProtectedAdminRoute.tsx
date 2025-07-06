@@ -32,4 +32,3 @@ export const ProtectedAdminRoute: React.FC<ProtectedAdminRouteProps> = ({ childr
 
   return <>{children}</>;
 };
-</ProtectedAdminRoute>
