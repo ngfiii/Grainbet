@@ -15,13 +15,13 @@ interface AdminAuthModalProps {
 export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { authenticateAdmin } = useAdmin();
+  const { login } = useAdmin();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    if (authenticateAdmin(password)) {
+    if (login(password)) {
       toast.success('Admin authentication successful!');
       setPassword('');
       onSuccess();
