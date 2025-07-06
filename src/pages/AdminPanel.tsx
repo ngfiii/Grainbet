@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdmin } from '@/contexts/AdminContext';
+import { AdminAuthModal } from '@/components/AdminAuthModal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -46,9 +48,9 @@ interface KeyStats {
 
 const AdminPanel = () => {
   const { user } = useAuth();
+  const { isAdminAuthenticated } = useAdmin();
   const navigate = useNavigate();
-  const [tempPassword, setTempPassword] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [keys, setKeys] = useState<CoinKey[]>([]);
   const [userBalances, setUserBalances] = useState<UserBalance[]>([]);
   const [tempPasswords, setTempPasswords] = useState<TempPassword[]>([]);
@@ -70,11 +72,15 @@ const AdminPanel = () => {
   const [deleteAmount, setDeleteAmount] = useState(100);
 
   useEffect(() => {
-    if (user) {
-      setIsAuthenticated(true);
+    // Check if user is authenticated admin or has admin context authentication
+    const isAdmin = user?.email?.toLowerCase() === 'ngfi' || user?.id === 'ngfi';
+    
+    if (isAdmin || isAdminAuthenticated) {
       loadData();
+    } else {
+      setShowAuthModal(true);
     }
-  }, [user]);
+  }, [user, isAdminAuthenticated]);
 
   // Check if temporary password is valid and not expired
   const checkTempPassword = async (password: string) => {
@@ -93,15 +99,9 @@ const AdminPanel = () => {
     }
   };
 
-  const handleTempPasswordSubmit = async () => {
-    const isValid = await checkTempPassword(tempPassword);
-    if (isValid) {
-      setIsAuthenticated(true);
-      loadData();
-      toast.success('Access granted with temporary password');
-    } else {
-      toast.error('Invalid or expired temporary password');
-    }
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    loadData();
   };
 
   const loadData = async () => {
@@ -409,41 +409,45 @@ const AdminPanel = () => {
     toast.success('Keys exported to TXT file');
   };
 
-  if (!user && !isAuthenticated) {
+  // Check if user has access (either authenticated admin or admin context)
+  const isAdmin = user?.email?.toLowerCase() === 'ngfi' || user?.id === 'ngfi';
+  const hasAccess = isAdmin || isAdminAuthenticated;
+
+  if (!hasAccess) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
-        <Card className="w-full max-w-md bg-gray-800 border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-center text-yellow-400">Admin Access</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="tempPassword">Temporary Password</Label>
-              <Input
-                id="tempPassword"
-                type="password"
-                value={tempPassword}
-                onChange={(e) => setTempPassword(e.target.value)}
-                className="bg-gray-700 border-gray-600 text-white"
-                placeholder="Enter temporary password"
-              />
-            </div>
-            <Button
-              onClick={handleTempPasswordSubmit}
-              className="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-bold"
-            >
-              Access Admin Panel
-            </Button>
-            <Button
-              onClick={() => navigate('/')}
-              variant="outline"
-              className="w-full border-gray-600 text-gray-300 hover:bg-gray-700"
-            >
-              Back to Site
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <>
+        <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
+          <Card className="w-full max-w-md bg-gray-800 border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-center text-yellow-400">🔒 Access Denied</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-center text-gray-300">
+                You need admin authentication to access this panel.
+              </p>
+              <Button
+                onClick={() => setShowAuthModal(true)}
+                className="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-bold"
+              >
+                Authenticate as Admin
+              </Button>
+              <Button
+                onClick={() => navigate('/')}
+                variant="outline"
+                className="w-full border-gray-600 text-gray-300 hover:bg-gray-700"
+              >
+                Back to Site
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        <AdminAuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+        />
+      </>
     );
   }
 
