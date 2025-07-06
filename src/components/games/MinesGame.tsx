@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -52,6 +52,7 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   const [revealedCount, setRevealedCount] = useState(0);
   const [currentMultiplier, setCurrentMultiplier] = useState(1);
   const [gameResult, setGameResult] = useState('');
+  const [clickQueue, setClickQueue] = useState<Set<string>>(new Set());
 
   // Initialize empty grid on component mount
   useEffect(() => {
@@ -125,51 +126,92 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     setRevealedCount(0);
     setCurrentMultiplier(1);
     setGameResult('');
+    setClickQueue(new Set());
   };
 
-  const revealTile = async (row: number, col: number) => {
-    if (gameStatus !== 'playing' || grid[row][col].revealed || grid[row][col].isAnimating) return;
+  const revealTile = useCallback(async (row: number, col: number) => {
+    const cellKey = `${row}-${col}`;
     
-    // Start animation
-    const newGrid = [...grid];
-    newGrid[row][col].isAnimating = true;
-    setGrid(newGrid);
-    
-    // Wait for animation
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    newGrid[row][col].revealed = true;
-    newGrid[row][col].isAnimating = false;
-    setGrid(newGrid);
-    
-    if (newGrid[row][col].isMine) {
-      // Hit a mine - game over
-      setGameStatus('finished');
-      setGameResult('💥 BOOM! Game Over');
-      
-      // Reveal all mines with staggered animation
-      const minePositions: [number, number][] = [];
-      newGrid.forEach((row, rowIndex) => {
-        row.forEach((cell, colIndex) => {
-          if (cell.isMine) {
-            minePositions.push([rowIndex, colIndex]);
-          }
-        });
-      });
-      
-      minePositions.forEach(([mineRow, mineCol], index) => {
-        setTimeout(() => {
-          const updatedGrid = [...grid];
-          updatedGrid[mineRow][mineCol].revealed = true;
-          setGrid([...updatedGrid]);
-        }, index * 150);
-      });
-    } else {
-      // Found a gem
-      const newRevealedCount = revealedCount + 1;
-      setRevealedCount(newRevealedCount);
+    // Prevent multiple clicks on same cell or during wrong game state
+    if (gameStatus !== 'playing' || grid[row]?.[col]?.revealed || clickQueue.has(cellKey)) {
+      return;
     }
-  };
+    
+    // Add to click queue to prevent duplicate processing
+    setClickQueue(prev => new Set([...prev, cellKey]));
+    
+    // Start animation immediately
+    setGrid(prevGrid => {
+      const newGrid = [...prevGrid];
+      if (newGrid[row] && newGrid[row][col]) {
+        newGrid[row][col] = { ...newGrid[row][col], isAnimating: true };
+      }
+      return newGrid;
+    });
+    
+    // Short animation delay
+    await new Promise(resolve => setTimeout(resolve, 150));
+    
+    setGrid(prevGrid => {
+      const newGrid = [...prevGrid];
+      if (!newGrid[row] || !newGrid[row][col] || newGrid[row][col].revealed) {
+        return prevGrid;
+      }
+      
+      newGrid[row][col] = {
+        ...newGrid[row][col],
+        revealed: true,
+        isAnimating: false
+      };
+      
+      if (newGrid[row][col].isMine) {
+        // Hit a mine - game over
+        setGameStatus('finished');
+        setGameResult('💥 BOOM! Game Over');
+        
+        // Reveal all mines with staggered animation
+        setTimeout(() => {
+          const minePositions: [number, number][] = [];
+          newGrid.forEach((row, rowIndex) => {
+            row.forEach((cell, colIndex) => {
+              if (cell.isMine && !cell.revealed) {
+                minePositions.push([rowIndex, colIndex]);
+              }
+            });
+          });
+          
+          minePositions.forEach(([mineRow, mineCol], index) => {
+            setTimeout(() => {
+              setGrid(currentGrid => {
+                const updatedGrid = [...currentGrid];
+                if (updatedGrid[mineRow] && updatedGrid[mineRow][mineCol]) {
+                  updatedGrid[mineRow][mineCol] = {
+                    ...updatedGrid[mineRow][mineCol],
+                    revealed: true
+                  };
+                }
+                return updatedGrid;
+              });
+            }, index * 100);
+          });
+        }, 200);
+      } else {
+        // Found a gem - update revealed count
+        setRevealedCount(prev => prev + 1);
+      }
+      
+      return newGrid;
+    });
+    
+    // Remove from click queue after processing
+    setTimeout(() => {
+      setClickQueue(prev => {
+        const newQueue = new Set(prev);
+        newQueue.delete(cellKey);
+        return newQueue;
+      });
+    }, 200);
+  }, [gameStatus, grid, clickQueue]);
 
   const cashOut = () => {
     if (gameStatus !== 'playing') return;
@@ -187,6 +229,7 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     setRevealedCount(0);
     setCurrentMultiplier(1);
     setGameResult('');
+    setClickQueue(new Set());
   };
 
   return (
@@ -245,9 +288,9 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
                 <button
                   key={`${rowIndex}-${colIndex}`}
                   onClick={() => revealTile(rowIndex, colIndex)}
-                  disabled={gameStatus === 'betting' || gameStatus === 'finished' || cell.isAnimating}
+                  disabled={gameStatus === 'betting' || gameStatus === 'finished' || cell.revealed || cell.isAnimating || clickQueue.has(`${rowIndex}-${colIndex}`)}
                   className={cn(
-                    "aspect-square text-3xl font-bold border-2 rounded-lg transition-all duration-300 relative overflow-hidden",
+                    "aspect-square text-3xl font-bold border-2 rounded-lg transition-all duration-200 relative overflow-hidden",
                     cell.isAnimating && "animate-pulse scale-110",
                     cell.revealed
                       ? cell.isMine

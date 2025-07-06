@@ -15,8 +15,8 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   const [isRolling, setIsRolling] = useState(false);
   const [lastWin, setLastWin] = useState<number | null>(null);
 
-  // Calculate win chance - if you set 2x, you have 50% chance
-  const winChance = 99 / targetMultiplier;
+  // Calculate win chance - simple formula
+  const winChance = Math.min(98, Math.max(1, (100 / targetMultiplier)));
 
   const roll = async () => {
     if (betAmount < 10 || betAmount > balance) return;
@@ -28,17 +28,17 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     // Deduct bet
     onUpdateBalance(-betAmount);
     
-    // Generate random result between 1.00 and 1000000.00
-    const randomResult = 1 + Math.random() * 999999;
+    // Generate random number between 1.00 and 100.00
+    const randomResult = 1 + Math.random() * 99;
     
-    // Determine if player wins
-    const playerWins = randomResult >= targetMultiplier;
+    // Simple win condition: if random result is greater than win chance
+    const playerWins = randomResult > (100 - winChance);
     
     console.log('🚀 LIMBO ROLL:', {
       result: randomResult.toFixed(2),
       target: targetMultiplier.toFixed(2),
-      playerWins,
-      winChance: winChance.toFixed(2) + '%'
+      winChance: winChance.toFixed(2) + '%',
+      playerWins
     });
     
     // Animation delay
@@ -79,9 +79,9 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
             type="number"
             step="0.01"
             min="1.01"
-            max="1000000"
+            max="100"
             value={targetMultiplier}
-            onChange={(e) => setTargetMultiplier(Math.max(1.01, Math.min(1000000, parseFloat(e.target.value) || 1.01)))}
+            onChange={(e) => setTargetMultiplier(Math.max(1.01, Math.min(100, parseFloat(e.target.value) || 1.01)))}
             className="bg-gray-700 border-gray-600 text-white transition-all duration-200 focus:ring-2 focus:ring-yellow-400 font-mono"
           />
         </div>
@@ -95,12 +95,12 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
               <span className="text-yellow-400 animate-pulse">Rolling...</span>
             ) : result !== null ? (
               <span className={`transition-all duration-200 ${
-                result >= targetMultiplier ? 'text-green-400' : 'text-red-400'
+                result > (100 - winChance) ? 'text-green-400' : 'text-red-400'
               }`}>
-                {result.toFixed(2)}x
+                {result.toFixed(2)}
               </span>
             ) : (
-              <span className="text-gray-500">0.00x</span>
+              <span className="text-gray-500">0.00</span>
             )}
           </div>
           
@@ -118,7 +118,7 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
             Win Chance: {winChance.toFixed(2)}%
           </div>
           <div className="text-gray-400 font-mono">
-            Win if result ≥ {targetMultiplier.toFixed(2)}x
+            Target: {targetMultiplier.toFixed(2)}x multiplier
           </div>
           <div className="text-gray-400 font-mono">
             Potential profit: {(betAmount * (targetMultiplier - 1)).toFixed(0)} coins
@@ -129,9 +129,9 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
         {!isRolling && result !== null && (
           <div className="mb-6 text-center animate-fade-in">
             <div className={`text-2xl font-bold mb-2 transition-all duration-300 font-mono ${
-              result >= targetMultiplier ? 'text-green-400 animate-bounce' : 'text-red-400'
+              result > (100 - winChance) ? 'text-green-400 animate-bounce' : 'text-red-400'
             }`}>
-              {result >= targetMultiplier ? '🎉 WIN!' : '💔 LOSE'}
+              {result > (100 - winChance) ? '🎉 WIN!' : '💔 LOSE'}
             </div>
             {lastWin && lastWin > 0 && (
               <div className="text-lg text-green-400 animate-pulse font-mono">

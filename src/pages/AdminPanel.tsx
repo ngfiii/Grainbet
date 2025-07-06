@@ -33,6 +33,11 @@ interface KeyStats {
   total: number;
 }
 
+interface TempPasswordWithExpiry {
+  password: string;
+  expiresAt: number;
+}
+
 const AdminPanel = () => {
   const { user } = useAuth();
   const { isAdminAuthenticated, logout: logoutAdmin, addTempPassword, removeTempPassword, tempPasswords } = useAdmin();
@@ -48,26 +53,36 @@ const AdminPanel = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Bulk generation states
+  // Bulk generation states with limits
   const [bulkCount, setBulkCount] = useState(50);
   const [bulkAmount, setBulkAmount] = useState(100);
   
   // Temp password management
   const [newTempPassword, setNewTempPassword] = useState('');
   const [tempPasswordDuration, setTempPasswordDuration] = useState(24); // hours
+  const [tempPasswordsWithExpiry, setTempPasswordsWithExpiry] = useState<TempPasswordWithExpiry[]>([]);
 
   // Bulk delete states
   const [deleteAmount, setDeleteAmount] = useState(100);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteType, setDeleteType] = useState<'active' | 'used' | 'all' | 'amount'>('active');
 
+  // Specific delete section states
+  const [specificDeleteAmount, setSpecificDeleteAmount] = useState(100);
+  const [specificDeleteCount, setSpecificDeleteCount] = useState(10);
+  const [showSpecificDeleteConfirm, setShowSpecificDeleteConfirm] = useState(false);
+
   useEffect(() => {
     if (isAdminAuthenticated) {
       fetchUsers();
       fetchKeys();
+      fetchTempPasswordsWithExpiry();
       
       // Set up real-time updates for users
-      const interval = setInterval(fetchUsers, 30000); // Refresh every 30 seconds
+      const interval = setInterval(() => {
+        fetchUsers();
+        fetchTempPasswordsWithExpiry();
+      }, 30000); // Refresh every 30 seconds
       return () => clearInterval(interval);
     }
   }, [isAdminAuthenticated]);
@@ -110,6 +125,20 @@ const AdminPanel = () => {
       setKeyStats([]);
     }
   }, [keys]);
+
+  const fetchTempPasswordsWithExpiry = () => {
+    try {
+      const savedTempPasswords = localStorage.getItem('tempPasswords');
+      if (savedTempPasswords) {
+        const parsedPasswords: TempPasswordWithExpiry[] = JSON.parse(savedTempPasswords);
+        const validPasswords = parsedPasswords.filter(tp => tp.expiresAt > Date.now());
+        setTempPasswordsWithExpiry(validPasswords);
+      }
+    } catch (error) {
+      console.error('Error parsing temp passwords:', error);
+      setTempPasswordsWithExpiry([]);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -346,6 +375,27 @@ const AdminPanel = () => {
     setLoading(false);
   };
 
+  const deleteSpecificAmountKeys = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('coin_keys')
+        .delete()
+        .eq('amount', specificDeleteAmount)
+        .limit(specificDeleteCount);
+      
+      if (error) throw error;
+      
+      toast.success(`✅ Deleted ${specificDeleteCount} keys of ${specificDeleteAmount} coins!`);
+      fetchKeys();
+      setShowSpecificDeleteConfirm(false);
+    } catch (error) {
+      console.error('Delete specific keys error:', error);
+      toast.error('Failed to delete specific keys');
+    }
+    setLoading(false);
+  };
+
   const exportKeys = (filterType: 'active' | 'used' | 'all') => {
     let keysToExport = keys;
     
@@ -408,12 +458,30 @@ const AdminPanel = () => {
       addTempPassword(newTempPassword.trim(), expirationTime);
       toast.success(`Temporary password added: ${newTempPassword} (expires in ${tempPasswordDuration} hours)`);
       setNewTempPassword('');
+      fetchTempPasswordsWithExpiry();
     }
   };
 
   const removeTempPasswordHandler = (password: string) => {
     removeTempPassword(password);
     toast.success('Temporary password removed');
+    fetchTempPasswordsWithExpiry();
+  };
+
+  const formatTimeRemaining = (expiresAt: number) => {
+    const now = Date.now();
+    const remaining = expiresAt - now;
+    
+    if (remaining <= 0) return 'Expired';
+    
+    const hours = Math.floor(remaining / (1000 * 60 * 60));
+    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
   };
 
   // Quick actions for common tasks
@@ -621,6 +689,67 @@ const AdminPanel = () => {
                 )}
               </div>
 
+              {/* Specific Delete Section */}
+              <div className="bg-orange-900/20 p-4 rounded-lg border border-orange-600 mb-6">
+                <h3 className="text-lg font-bold text-orange-400 mb-3 flex items-center">
+                  <Trash2 className="mr-2 h-5 w-5" />
+                  🎯 Delete Specific Amount Keys
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Key Amount (coins)</label>
+                    <Input
+                      type="number"
+                      value={specificDeleteAmount}
+                      onChange={(e) => setSpecificDeleteAmount(parseInt(e.target.value) || 100)}
+                      className="bg-gray-700 border-gray-600 text-white"
+                      min={1}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Number of Keys to Delete</label>
+                    <Input
+                      type="number"
+                      value={specificDeleteCount}
+                      onChange={(e) => setSpecificDeleteCount(parseInt(e.target.value) || 10)}
+                      className="bg-gray-700 border-gray-600 text-white"
+                      min={1}
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      onClick={() => setShowSpecificDeleteConfirm(true)}
+                      className="w-full bg-orange-600 hover:bg-orange-700"
+                    >
+                      Delete {specificDeleteCount} of {specificDeleteAmount} coin keys
+                    </Button>
+                  </div>
+                </div>
+                
+                {showSpecificDeleteConfirm && (
+                  <div className="bg-orange-800/50 p-3 rounded border border-orange-500">
+                    <p className="text-orange-200 mb-3">
+                      ⚠️ Are you sure you want to delete {specificDeleteCount} keys of {specificDeleteAmount} coins each?
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={deleteSpecificAmountKeys}
+                        disabled={loading}
+                        className="bg-orange-600 hover:bg-orange-700"
+                      >
+                        {loading ? '⏳ Deleting...' : 'Yes, Delete Them'}
+                      </Button>
+                      <Button
+                        onClick={() => setShowSpecificDeleteConfirm(false)}
+                        className="bg-gray-600 hover:bg-gray-700"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Bulk Delete Section */}
               <div className="bg-red-900/20 p-4 rounded-lg border border-red-600 mb-6">
                 <h3 className="text-lg font-bold text-red-400 mb-3 flex items-center">
@@ -718,13 +847,14 @@ const AdminPanel = () => {
                         min={50}
                         max={10000}
                       />
+                      <p className="text-xs text-gray-400 mt-1">Min: 50, Max: 10,000</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2">Coins per Key</label>
                       <Input
                         type="number"
                         value={bulkAmount}
-                        onChange={(e) => setBulkAmount(parseInt(e.target.value) || 100)}
+                        onChange={(e) => setBulkAmount(Math.max(1, parseInt(e.target.value) || 100))}
                         className="bg-gray-700 border-gray-600 text-white"
                         min={1}
                       />
@@ -732,7 +862,7 @@ const AdminPanel = () => {
                     <div className="flex items-end">
                       <Button
                         onClick={generateBulkKeys}
-                        disabled={loading}
+                        disabled={loading || bulkCount < 50 || bulkCount > 10000}
                         className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                       >
                         {loading ? '⏳ Generating...' : `Generate ${bulkCount} Keys`}
@@ -879,20 +1009,23 @@ const AdminPanel = () => {
               <div className="space-y-2">
                 <h3 className="text-lg font-bold text-white">Active Temporary Passwords</h3>
                 <div className="max-h-64 overflow-y-auto space-y-2">
-                  {tempPasswords.map((password, index) => (
+                  {tempPasswordsWithExpiry.map((passwordObj, index) => (
                     <div key={index} className="bg-gray-700 p-3 rounded flex justify-between items-center">
                       <div>
-                        <span className="text-white font-mono">{password}</span>
+                        <span className="text-white font-mono">{passwordObj.password}</span>
+                        <span className="ml-3 text-blue-400 text-sm">
+                          Time remaining: {formatTimeRemaining(passwordObj.expiresAt)}
+                        </span>
                       </div>
                       <Button
-                        onClick={() => removeTempPasswordHandler(password)}
+                        onClick={() => removeTempPasswordHandler(passwordObj.password)}
                         className="bg-red-600 hover:bg-red-700 text-xs"
                       >
                         Remove
                       </Button>
                     </div>
                   ))}
-                  {tempPasswords.length === 0 && (
+                  {tempPasswordsWithExpiry.length === 0 && (
                     <div className="text-gray-400 text-center py-4">
                       No temporary passwords active
                     </div>
