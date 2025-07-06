@@ -75,6 +75,30 @@ export type Database = {
         }
         Relationships: []
       }
+      temp_passwords: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          password: string
+          used: boolean
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          password: string
+          used?: boolean
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          password?: string
+          used?: boolean
+        }
+        Relationships: []
+      }
       user_balances: {
         Row: {
           balance: number
