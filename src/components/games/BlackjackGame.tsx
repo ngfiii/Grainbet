@@ -1,7 +1,8 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useGameSave } from '@/hooks/useGameSave';
 
 interface Card {
   suit: string;
@@ -23,8 +24,47 @@ export const BlackjackGame: React.FC<GameProps> = ({ balance, onUpdateBalance })
   const [lastWin, setLastWin] = useState<number | null>(null);
   const [showDealerSecondCard, setShowDealerSecondCard] = useState(false);
 
+  const { saveGameState, loadGameState, clearGameState } = useGameSave('blackjack');
+
   const suits = ['♠️', '♥️', '♦️', '♣️'];
   const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+  useEffect(() => {
+    loadSavedGame();
+  }, []);
+
+  const loadSavedGame = async () => {
+    const savedState = await loadGameState();
+    if (savedState) {
+      setBetAmount(savedState.betAmount || 10);
+      setPlayerHand(savedState.playerHand || []);
+      setDealerHand(savedState.dealerHand || []);
+      setGameStatus(savedState.gameStatus || 'betting');
+      setGameResult(savedState.gameResult || '');
+      setLastWin(savedState.lastWin || null);
+      setShowDealerSecondCard(savedState.showDealerSecondCard || false);
+      console.log('Loaded saved Blackjack game');
+    }
+  };
+
+  const saveCurrentGameState = async () => {
+    if (gameStatus === 'playing') {
+      await saveGameState({
+        betAmount,
+        playerHand,
+        dealerHand,
+        gameStatus,
+        gameResult,
+        lastWin,
+        showDealerSecondCard
+      });
+    }
+  };
+
+  // Save game state whenever it changes during gameplay
+  useEffect(() => {
+    saveCurrentGameState();
+  }, [gameStatus, playerHand, dealerHand, showDealerSecondCard]);
 
   const createDeck = (): Card[] => {
     const deck: Card[] = [];
@@ -101,6 +141,7 @@ export const BlackjackGame: React.FC<GameProps> = ({ balance, onUpdateBalance })
       setShowDealerSecondCard(true);
       setGameStatus('finished');
       setGameResult('💔 BUST! You lose');
+      clearGameState(); // Clear saved game on game over
     }
   };
 
@@ -153,6 +194,8 @@ export const BlackjackGame: React.FC<GameProps> = ({ balance, onUpdateBalance })
       setLastWin(winAmount);
       onUpdateBalance(winAmount);
     }
+    
+    clearGameState(); // Clear saved game when game finishes
   };
 
   const newGame = () => {
@@ -162,6 +205,7 @@ export const BlackjackGame: React.FC<GameProps> = ({ balance, onUpdateBalance })
     setGameResult('');
     setLastWin(null);
     setShowDealerSecondCard(false);
+    clearGameState(); // Clear any saved game state
   };
 
   return (

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useGameSave } from '@/hooks/useGameSave';
 
 interface GameProps {
   balance: number;
@@ -52,12 +53,48 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   const [revealedCount, setRevealedCount] = useState(0);
   const [currentMultiplier, setCurrentMultiplier] = useState(1);
   const [gameResult, setGameResult] = useState('');
-  const [clickQueue, setClickQueue] = useState<Set<string>>(new Set());
+  const [processingCells, setProcessingCells] = useState<Set<string>>(new Set());
+  
+  const { saveGameState, loadGameState, clearGameState } = useGameSave('mines');
 
   // Initialize empty grid on component mount
   useEffect(() => {
     initializeEmptyGrid();
+    loadSavedGame();
   }, []);
+
+  const loadSavedGame = async () => {
+    const savedState = await loadGameState();
+    if (savedState) {
+      setBetAmount(savedState.betAmount || 10);
+      setMinesCount(savedState.minesCount || 3);
+      setGrid(savedState.grid || []);
+      setGameStatus(savedState.gameStatus || 'betting');
+      setRevealedCount(savedState.revealedCount || 0);
+      setCurrentMultiplier(savedState.currentMultiplier || 1);
+      setGameResult(savedState.gameResult || '');
+      console.log('Loaded saved Mines game');
+    }
+  };
+
+  const saveCurrentGameState = async () => {
+    if (gameStatus === 'playing') {
+      await saveGameState({
+        betAmount,
+        minesCount,
+        grid,
+        gameStatus,
+        revealedCount,
+        currentMultiplier,
+        gameResult
+      });
+    }
+  };
+
+  // Save game state whenever it changes during gameplay
+  useEffect(() => {
+    saveCurrentGameState();
+  }, [gameStatus, grid, revealedCount, currentMultiplier]);
 
   // Use exact multipliers from the chart
   useEffect(() => {
@@ -126,23 +163,25 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     setRevealedCount(0);
     setCurrentMultiplier(1);
     setGameResult('');
-    setClickQueue(new Set());
+    setProcessingCells(new Set());
   };
 
   const revealTile = useCallback(async (row: number, col: number) => {
     const cellKey = `${row}-${col}`;
     
-    // Prevent multiple clicks on same cell or during wrong game state
-    if (gameStatus !== 'playing' || grid[row]?.[col]?.revealed || clickQueue.has(cellKey)) {
+    // Prevent processing if cell is already being processed, revealed, or game is not in playing state
+    if (gameStatus !== 'playing' || 
+        grid[row]?.[col]?.revealed || 
+        processingCells.has(cellKey)) {
       return;
     }
     
-    // Add to click queue to prevent duplicate processing
-    setClickQueue(prev => new Set([...prev, cellKey]));
+    // Mark cell as being processed
+    setProcessingCells(prev => new Set([...prev, cellKey]));
     
     // Start animation immediately
     setGrid(prevGrid => {
-      const newGrid = [...prevGrid];
+      const newGrid = prevGrid.map(row => [...row]);
       if (newGrid[row] && newGrid[row][col]) {
         newGrid[row][col] = { ...newGrid[row][col], isAnimating: true };
       }
@@ -150,10 +189,10 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     });
     
     // Short animation delay
-    await new Promise(resolve => setTimeout(resolve, 150));
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     setGrid(prevGrid => {
-      const newGrid = [...prevGrid];
+      const newGrid = prevGrid.map(row => [...row]);
       if (!newGrid[row] || !newGrid[row][col] || newGrid[row][col].revealed) {
         return prevGrid;
       }
@@ -168,6 +207,7 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
         // Hit a mine - game over
         setGameStatus('finished');
         setGameResult('💥 BOOM! Game Over');
+        clearGameState(); // Clear saved game on game over
         
         // Reveal all mines with staggered animation
         setTimeout(() => {
@@ -183,7 +223,7 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
           minePositions.forEach(([mineRow, mineCol], index) => {
             setTimeout(() => {
               setGrid(currentGrid => {
-                const updatedGrid = [...currentGrid];
+                const updatedGrid = currentGrid.map(row => [...row]);
                 if (updatedGrid[mineRow] && updatedGrid[mineRow][mineCol]) {
                   updatedGrid[mineRow][mineCol] = {
                     ...updatedGrid[mineRow][mineCol],
@@ -203,15 +243,35 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
       return newGrid;
     });
     
-    // Remove from click queue after processing
+    // Remove from processing set after a short delay
     setTimeout(() => {
-      setClickQueue(prev => {
-        const newQueue = new Set(prev);
-        newQueue.delete(cellKey);
-        return newQueue;
+      setProcessingCells(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(cellKey);
+        return newSet;
       });
-    }, 200);
-  }, [gameStatus, grid, clickQueue]);
+    }, 150);
+  }, [gameStatus, grid, processingCells, clearGameState]);
+
+  const pickRandomTile = () => {
+    if (gameStatus !== 'playing') return;
+    
+    // Find all unrevealed tiles
+    const unrevealedTiles: [number, number][] = [];
+    grid.forEach((row, rowIndex) => {
+      row.forEach((cell, colIndex) => {
+        if (!cell.revealed && !processingCells.has(`${rowIndex}-${colIndex}`)) {
+          unrevealedTiles.push([rowIndex, colIndex]);
+        }
+      });
+    });
+    
+    if (unrevealedTiles.length > 0) {
+      const randomIndex = Math.floor(Math.random() * unrevealedTiles.length);
+      const [row, col] = unrevealedTiles[randomIndex];
+      revealTile(row, col);
+    }
+  };
 
   const cashOut = () => {
     if (gameStatus !== 'playing') return;
@@ -221,6 +281,7 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     onUpdateBalance(totalPayout);
     setGameStatus('finished');
     setGameResult(`🎉 Cashed out for ${profit.toFixed(0)} coins profit!`);
+    clearGameState(); // Clear saved game on cash out
   };
 
   const newGame = () => {
@@ -229,7 +290,8 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     setRevealedCount(0);
     setCurrentMultiplier(1);
     setGameResult('');
-    setClickQueue(new Set());
+    setProcessingCells(new Set());
+    clearGameState(); // Clear any saved game state
   };
 
   return (
@@ -281,6 +343,18 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
             </div>
           )}
 
+          {/* Pick Random Button */}
+          {gameStatus === 'playing' && (
+            <div className="mb-4 text-center">
+              <Button
+                onClick={pickRandomTile}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-2 transition-all duration-200 hover:scale-105 font-mono"
+              >
+                🎲 Pick Random Tile
+              </Button>
+            </div>
+          )}
+
           {/* Game Grid */}
           <div className="grid grid-cols-5 gap-3 p-4 bg-gray-900/50 rounded-lg">
             {grid.map((row, rowIndex) =>
@@ -288,7 +362,7 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
                 <button
                   key={`${rowIndex}-${colIndex}`}
                   onClick={() => revealTile(rowIndex, colIndex)}
-                  disabled={gameStatus === 'betting' || gameStatus === 'finished' || cell.revealed || cell.isAnimating || clickQueue.has(`${rowIndex}-${colIndex}`)}
+                  disabled={gameStatus === 'betting' || gameStatus === 'finished' || cell.revealed || cell.isAnimating || processingCells.has(`${rowIndex}-${colIndex}`)}
                   className={cn(
                     "aspect-square text-3xl font-bold border-2 rounded-lg transition-all duration-200 relative overflow-hidden",
                     cell.isAnimating && "animate-pulse scale-110",
