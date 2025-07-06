@@ -19,11 +19,29 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   // Calculate win chance based on target multiplier
   const winChance = Math.min(99, Math.max(1, (99 / targetMultiplier)));
 
-  // Correct Limbo crash point generation
-  const generateLimboCrashPoint = (houseEdge = 0.01): number => {
-    const r = Math.random();
-    const crashPoint = (100 - houseEdge * 100) / (r * 100);
-    return Math.max(1.00, crashPoint); // Ensure minimum of 1.00x
+  // Fixed Limbo crash point generation - more realistic distribution
+  const generateLimboCrashPoint = (): number => {
+    const random = Math.random();
+    
+    // More realistic Limbo distribution
+    // 60% chance between 1.00x - 2.00x
+    // 25% chance between 2.00x - 5.00x  
+    // 10% chance between 5.00x - 10.00x
+    // 5% chance between 10.00x - 100.00x
+    
+    if (random < 0.6) {
+      // 1.00x to 2.00x
+      return 1.00 + Math.random() * 1.00;
+    } else if (random < 0.85) {
+      // 2.00x to 5.00x
+      return 2.00 + Math.random() * 3.00;
+    } else if (random < 0.95) {
+      // 5.00x to 10.00x
+      return 5.00 + Math.random() * 5.00;
+    } else {
+      // 10.00x to 100.00x
+      return 10.00 + Math.random() * 90.00;
+    }
   };
 
   const roll = async () => {
@@ -37,7 +55,7 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     // Deduct bet
     onUpdateBalance(-betAmount);
     
-    // Generate the actual crash point using correct Limbo algorithm
+    // Generate the crash point using fixed distribution
     const crashPoint = generateLimboCrashPoint();
     
     console.log('🚀 LIMBO ROLL:', {

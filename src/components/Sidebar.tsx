@@ -2,6 +2,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { Link } from 'react-router-dom';
 import type { Game } from '@/pages/Index';
 
 interface SidebarProps {
@@ -17,6 +19,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   collapsed,
   onToggle 
 }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.email?.toLowerCase() === 'ngfi' || user?.id === 'ngfi';
+
   const games = [
     { id: 'dashboard' as Game, name: 'Dashboard', emoji: '🏠' },
     { id: 'dice' as Game, name: 'Dice', emoji: '🎲' },
@@ -67,6 +72,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {!collapsed && <span className="truncate">{game.name}</span>}
           </Button>
         ))}
+
+        {/* Admin Panel Link */}
+        {isAdmin && (
+          <Link to="/admin" className="block">
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full justify-start font-mono transition-all duration-200 text-red-400 hover:text-white hover:bg-red-700/20",
+                collapsed ? "px-2" : "px-4"
+              )}
+            >
+              <span className="text-lg mr-3 flex-shrink-0">⚙️</span>
+              {!collapsed && <span className="truncate">Admin Panel</span>}
+            </Button>
+          </Link>
+        )}
       </div>
 
       {/* Footer */}

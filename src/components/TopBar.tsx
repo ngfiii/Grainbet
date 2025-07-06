@@ -1,12 +1,11 @@
 
-import { Coins, Plus, LogOut, Gift, Settings } from 'lucide-react';
+import { Coins, Plus, LogOut, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { RedeemModal } from './RedeemModal';
 import { TipModal } from './TipModal';
-import { Link } from 'react-router-dom';
 
 interface TopBarProps {
   balance: number;
@@ -38,8 +37,6 @@ export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins, onDeductCoi
   const handleFreeCoins = () => {
     window.open('https://lootdest.org/s?TMyWVEiJ', '_blank');
   };
-
-  const isAdmin = user?.email?.toLowerCase() === 'ngfi' || user?.id === 'ngfi';
 
   return (
     <>
@@ -77,15 +74,6 @@ export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins, onDeductCoi
             <Gift size={16} className="mr-1" />
             Free coins
           </Button>
-
-          {isAdmin && (
-            <Link to="/admin">
-              <Button className="bg-red-600 hover:bg-red-700 text-white transition-all duration-200 font-mono">
-                <Settings size={16} className="mr-1" />
-                Admin Panel
-              </Button>
-            </Link>
-          )}
 
           {user && (
             <Button
