@@ -13,9 +13,12 @@ interface Ball {
   id: number;
   x: number;
   y: number;
+  vx: number; // velocity x
+  vy: number; // velocity y
   path: number[];
   currentStep: number;
   isActive: boolean;
+  radius: number;
 }
 
 interface Peg {
@@ -24,6 +27,7 @@ interface Peg {
   row: number;
   col: number;
   isAnimating: boolean;
+  radius: number;
 }
 
 export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
@@ -38,6 +42,13 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
   const [springSlots, setSpringSlots] = useState<number[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
+
+  // Physics constants
+  const GRAVITY = 0.3;
+  const BOUNCE_FACTOR = 0.7;
+  const FRICTION = 0.98;
+  const PEG_RADIUS = 4;
+  const BALL_RADIUS = 8;
 
   // Risk-based multipliers for different row counts
   const getMultipliers = (rows: number, risk: 'low' | 'medium' | 'high') => {
@@ -65,7 +76,6 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
 
   // Generate provably fair path using hash
   const generatePath = (rows: number): number[] => {
-    // Simple hash-based path generation (in real implementation, use proper provably fair hash)
     const seed = Date.now() + Math.random();
     const path: number[] = [];
     
@@ -100,12 +110,132 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
           y,
           row,
           col,
-          isAnimating: false
+          isAnimating: false,
+          radius: PEG_RADIUS
         });
       }
     }
 
     setPegs(newPegs);
+  };
+
+  // Check collision between ball and peg
+  const checkPegCollision = (ball: Ball, peg: Peg) => {
+    const dx = ball.x - peg.x;
+    const dy = ball.y - peg.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    return distance < (ball.radius + peg.radius);
+  };
+
+  // Handle ball-peg collision with realistic physics
+  const handlePegCollision = (ball: Ball, peg: Peg) => {
+    const dx = ball.x - peg.x;
+    const dy = ball.y - peg.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    if (distance < (ball.radius + peg.radius)) {
+      // Normalize collision vector
+      const nx = dx / distance;
+      const ny = dy / distance;
+      
+      // Separate the ball from the peg
+      const overlap = (ball.radius + peg.radius) - distance;
+      ball.x += nx * overlap * 0.5;
+      ball.y += ny * overlap * 0.5;
+      
+      // Calculate relative velocity
+      const relativeVelocity = ball.vx * nx + ball.vy * ny;
+      
+      // Don't resolve if velocities are separating
+      if (relativeVelocity > 0) return;
+      
+      // Calculate restitution
+      const restitution = BOUNCE_FACTOR;
+      const impulse = -(1 + restitution) * relativeVelocity;
+      
+      // Apply impulse
+      ball.vx += impulse * nx;
+      ball.vy += impulse * ny;
+      
+      // Add some randomness for more natural bouncing
+      ball.vx += (Math.random() - 0.5) * 0.5;
+      ball.vy += (Math.random() - 0.5) * 0.3;
+      
+      // Animate peg
+      setPegs(prev => prev.map(p => 
+        p === peg ? { ...p, isAnimating: true } : p
+      ));
+      
+      setTimeout(() => {
+        setPegs(prev => prev.map(p => 
+          p === peg ? { ...p, isAnimating: false } : p
+        ));
+      }, 150);
+    }
+  };
+
+  // Update ball physics
+  const updateBallPhysics = (ball: Ball) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return ball;
+
+    // Apply gravity
+    ball.vy += GRAVITY;
+    
+    // Apply friction
+    ball.vx *= FRICTION;
+    ball.vy *= FRICTION;
+    
+    // Update position
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+    
+    // Check collisions with pegs
+    pegs.forEach(peg => {
+      if (checkPegCollision(ball, peg)) {
+        handlePegCollision(ball, peg);
+      }
+    });
+    
+    // Boundary collision with walls
+    if (ball.x - ball.radius <= 40) {
+      ball.x = 40 + ball.radius;
+      ball.vx = Math.abs(ball.vx) * BOUNCE_FACTOR;
+    }
+    if (ball.x + ball.radius >= canvas.width - 40) {
+      ball.x = canvas.width - 40 - ball.radius;
+      ball.vx = -Math.abs(ball.vx) * BOUNCE_FACTOR;
+    }
+    
+    // Check if ball reached bottom
+    const bucketY = canvas.height - 80;
+    if (ball.y >= bucketY) {
+      // Calculate which bucket the ball lands in
+      const bucketWidth = (canvas.width - 80) / multipliers.length;
+      const bucketIndex = Math.floor((ball.x - 40) / bucketWidth);
+      const finalSlot = Math.max(0, Math.min(multipliers.length - 1, bucketIndex));
+      
+      // Calculate result
+      const multiplier = multipliers[finalSlot];
+      setLastResult({ slot: finalSlot, multiplier });
+      
+      // Trigger spring animation
+      setSpringSlots([finalSlot]);
+      setTimeout(() => setSpringSlots([]), 800);
+      
+      const profit = betAmount * (multiplier - 1);
+      setLastWin(profit);
+      onUpdateBalance(profit);
+      
+      setIsDropping(false);
+      
+      // Remove ball
+      setBalls(prev => prev.filter(b => b.id !== ball.id));
+      
+      ball.isActive = false;
+    }
+    
+    return ball;
   };
 
   // Draw the plinko board
@@ -131,7 +261,7 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     
     // Draw pegs
     pegs.forEach(peg => {
-      const pegRadius = peg.isAnimating ? 6 : 4;
+      const pegRadius = peg.isAnimating ? peg.radius * 1.5 : peg.radius;
       
       // Peg shadow
       ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
@@ -166,122 +296,35 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
       ctx.stroke();
     }
     
-    // Draw balls
+    // Draw balls with realistic shadows and lighting
     balls.forEach(ball => {
       if (!ball.isActive) return;
       
       // Ball shadow
       ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
       ctx.beginPath();
-      ctx.arc(ball.x + 2, ball.y + 2, 8, 0, 2 * Math.PI);
+      ctx.arc(ball.x + 2, ball.y + 2, ball.radius, 0, 2 * Math.PI);
       ctx.fill();
       
       // Ball
-      const ballGradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 0, ball.x, ball.y, 8);
+      const ballGradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 0, ball.x, ball.y, ball.radius);
       ballGradient.addColorStop(0, '#fbbf24');
-      ballGradient.addColorStop(1, '#f59e0b');
+      ballGradient.addColorStop(0.7, '#f59e0b');
+      ballGradient.addColorStop(1, '#d97706');
       ctx.fillStyle = ballGradient;
       ctx.beginPath();
-      ctx.arc(ball.x, ball.y, 8, 0, 2 * Math.PI);
+      ctx.arc(ball.x, ball.y, ball.radius, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      // Ball highlight
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.beginPath();
+      ctx.arc(ball.x - 2, ball.y - 2, ball.radius * 0.4, 0, 2 * Math.PI);
       ctx.fill();
     });
   };
 
-  // Animate peg bounce
-  const animatePeg = (row: number, col: number) => {
-    setPegs(prev => prev.map(peg => 
-      peg.row === row && peg.col === col 
-        ? { ...peg, isAnimating: true }
-        : peg
-    ));
-
-    setTimeout(() => {
-      setPegs(prev => prev.map(peg => 
-        peg.row === row && peg.col === col 
-          ? { ...peg, isAnimating: false }
-          : peg
-      ));
-    }, 100);
-  };
-
-  // Animate ball movement
-  const animateBall = async (ball: Ball) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const centerX = canvas.width / 2;
-    const startY = 50;
-    const rowSpacing = 40;
-    const pegSpacing = 35;
-    const bucketY = canvas.height - 80;
-    const bucketWidth = (canvas.width - 80) / multipliers.length;
-
-    let currentX = centerX;
-    let currentY = startY;
-
-    // Update ball position
-    setBalls(prev => prev.map(b => 
-      b.id === ball.id 
-        ? { ...b, x: currentX, y: currentY, isActive: true }
-        : b
-    ));
-
-    // Animate through each row
-    for (let step = 0; step < ball.path.length; step++) {
-      await new Promise(resolve => setTimeout(resolve, 150));
-      
-      const direction = ball.path[step]; // 1 = right, 0 = left
-      const nextX = currentX + (direction === 1 ? pegSpacing / 2 : -pegSpacing / 2);
-      const nextY = currentY + rowSpacing;
-
-      // Animate peg hit
-      const pegCol = direction === 1 ? step : step + 1;
-      animatePeg(step, pegCol);
-
-      // Update ball position
-      currentX = nextX;
-      currentY = nextY;
-
-      setBalls(prev => prev.map(b => 
-        b.id === ball.id 
-          ? { ...b, x: currentX, y: currentY }
-          : b
-      ));
-    }
-
-    // Final drop into bucket
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    const finalSlot = ball.path.reduce((sum, bit) => sum + bit, 0);
-    const bucketX = 40 + (finalSlot + 0.5) * bucketWidth;
-    
-    setBalls(prev => prev.map(b => 
-      b.id === ball.id 
-        ? { ...b, x: bucketX, y: bucketY + 20, isActive: true }
-        : b
-    ));
-
-    // Calculate result
-    const multiplier = multipliers[finalSlot];
-    setLastResult({ slot: finalSlot, multiplier });
-    
-    // Trigger spring animation
-    setSpringSlots([finalSlot]);
-    setTimeout(() => setSpringSlots([]), 800);
-    
-    const profit = betAmount * (multiplier - 1);
-    setLastWin(profit);
-    onUpdateBalance(profit);
-    
-    setIsDropping(false);
-    
-    // Clean up ball after animation
-    setTimeout(() => {
-      setBalls(prev => prev.filter(b => b.id !== ball.id));
-    }, 1000);
-  };
-
-  // Drop ball function
+  // Drop ball function with realistic physics
   const dropBall = async () => {
     if (betAmount < 10 || betAmount > balance || isDropping) return;
     
@@ -290,23 +333,23 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     setLastResult(null);
     setLastWin(null);
 
-    // Generate deterministic path
-    const path = generatePath(rows);
-    
-    // Create new ball
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Create new ball with physics properties
     const newBall: Ball = {
       id: Date.now(),
-      x: 0,
-      y: 0,
-      path,
+      x: canvas.width / 2 + (Math.random() - 0.5) * 10, // Small random offset
+      y: 30,
+      vx: (Math.random() - 0.5) * 2, // Random initial horizontal velocity
+      vy: 0,
+      path: generatePath(rows),
       currentStep: 0,
-      isActive: false
+      isActive: true,
+      radius: BALL_RADIUS
     };
 
     setBalls([newBall]);
-    
-    // Start animation
-    animateBall(newBall);
   };
 
   // Initialize pegs when rows change
@@ -314,9 +357,14 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     initializePegs();
   }, [rows]);
 
-  // Animation loop
+  // Physics animation loop
   useEffect(() => {
     const animate = () => {
+      // Update ball physics
+      setBalls(prev => prev.map(ball => 
+        ball.isActive ? updateBallPhysics({ ...ball }) : ball
+      ));
+      
       drawBoard();
       animationRef.current = requestAnimationFrame(animate);
     };

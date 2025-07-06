@@ -1,5 +1,5 @@
 
-import { Coins, Plus, LogOut, Circle, Settings } from 'lucide-react';
+import { Coins, Plus, LogOut, Gift, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -35,6 +35,10 @@ export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins, onDeductCoi
     toast.success('Signed out successfully!');
   };
 
+  const handleFreeCoins = () => {
+    window.open('https://lootdest.org/s?TMyWVEiJ', '_blank');
+  };
+
   const isAdmin = user?.email?.toLowerCase() === 'ngfi' || user?.id === 'ngfi';
 
   return (
@@ -66,12 +70,13 @@ export const TopBar: React.FC<TopBarProps> = ({ balance, onAddCoins, onDeductCoi
             Redeem Coins
           </Button>
 
-          <Link to="/credits">
-            <Button className="bg-purple-600 hover:bg-purple-700 text-white transition-all duration-200 font-mono">
-              <Circle size={16} className="mr-1" />
-              Credits
-            </Button>
-          </Link>
+          <Button 
+            onClick={handleFreeCoins}
+            className="bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200 font-mono"
+          >
+            <Gift size={16} className="mr-1" />
+            Free coins
+          </Button>
 
           {isAdmin && (
             <Link to="/admin">

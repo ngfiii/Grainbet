@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAdmin } from '@/contexts/AdminContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Search } from 'lucide-react';
+import { Search, Download } from 'lucide-react';
 
 interface User {
   id: string;
@@ -40,8 +40,13 @@ const AdminPanel = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
+  // Bulk generation states
+  const [bulkCount, setBulkCount] = useState(50);
+  const [bulkAmount, setBulkAmount] = useState(100);
+  
   // Temp password management
   const [newTempPassword, setNewTempPassword] = useState('');
+  const [tempPasswordDuration, setTempPasswordDuration] = useState(24); // hours
 
   useEffect(() => {
     if (isAdminAuthenticated) {
@@ -234,6 +239,72 @@ const AdminPanel = () => {
     setLoading(false);
   };
 
+  const generateBulkKeys = async () => {
+    if (bulkCount < 50 || bulkCount > 10000) {
+      toast.error('Bulk count must be between 50 and 10,000');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      const keysToInsert = [];
+      
+      for (let i = 0; i < bulkCount; i++) {
+        let code = '';
+        for (let j = 0; j < keyLength; j++) {
+          code += characters.charAt(Math.floor(Math.random() * characters.length));
+        }
+        keysToInsert.push({ code, amount: bulkAmount, used: false });
+      }
+      
+      const { error } = await supabase
+        .from('coin_keys')
+        .insert(keysToInsert);
+
+      if (error) throw error;
+      
+      toast.success(`✅ Generated ${bulkCount} keys with ${bulkAmount} coins each!`);
+      fetchKeys();
+    } catch (error) {
+      console.error('Bulk generate error:', error);
+      toast.error('Failed to generate bulk keys');
+    }
+    setLoading(false);
+  };
+
+  const exportKeys = (filterType: 'active' | 'used' | 'all') => {
+    let keysToExport = keys;
+    
+    switch (filterType) {
+      case 'active':
+        keysToExport = keys.filter(key => !key.used);
+        break;
+      case 'used':
+        keysToExport = keys.filter(key => key.used);
+        break;
+      case 'all':
+        keysToExport = keys;
+        break;
+    }
+    
+    const exportData = keysToExport.map(key => 
+      `${key.code} - ${key.amount} coins`
+    ).join('\n');
+    
+    const blob = new Blob([exportData], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `coin_keys_${filterType}_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast.success(`Exported ${keysToExport.length} ${filterType} keys!`);
+  };
+
   const deleteKey = async (keyId: string) => {
     setLoading(true);
     try {
@@ -259,8 +330,10 @@ const AdminPanel = () => {
 
   const addTempPasswordHandler = () => {
     if (newTempPassword.trim()) {
-      addTempPassword(newTempPassword.trim());
-      toast.success(`Temporary password added: ${newTempPassword}`);
+      // Convert hours to milliseconds for expiration
+      const expirationTime = Date.now() + (tempPasswordDuration * 60 * 60 * 1000);
+      addTempPassword(newTempPassword.trim(), expirationTime);
+      toast.success(`Temporary password added: ${newTempPassword} (expires in ${tempPasswordDuration} hours)`);
       setNewTempPassword('');
     }
   };
@@ -446,7 +519,45 @@ const AdminPanel = () => {
                   />
                   <p className="text-sm text-gray-400 mt-1">Between 6 and 20 characters</p>
                 </div>
+
+                {/* Bulk Generation Section */}
+                <div className="bg-gray-700/50 p-4 rounded-lg border border-gray-600">
+                  <h3 className="text-lg font-bold text-white mb-3">🔥 Bulk Generate Keys</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Number of Keys (50-10,000)</label>
+                      <Input
+                        type="number"
+                        value={bulkCount}
+                        onChange={(e) => setBulkCount(Math.max(50, Math.min(10000, parseInt(e.target.value) || 50)))}
+                        className="bg-gray-700 border-gray-600 text-white"
+                        min={50}
+                        max={10000}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Coins per Key</label>
+                      <Input
+                        type="number"
+                        value={bulkAmount}
+                        onChange={(e) => setBulkAmount(parseInt(e.target.value) || 100)}
+                        className="bg-gray-700 border-gray-600 text-white"
+                        min={1}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button
+                        onClick={generateBulkKeys}
+                        disabled={loading}
+                        className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                      >
+                        {loading ? '⏳ Generating...' : `Generate ${bulkCount} Keys`}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
                 
+                {/* Single Key Generation */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {[5, 10, 50, 100, 500].map(amount => (
                     <Button
@@ -474,6 +585,34 @@ const AdminPanel = () => {
                     className="bg-purple-600 hover:bg-purple-700"
                   >
                     Generate Custom
+                  </Button>
+                </div>
+              </div>
+
+              {/* Export Section */}
+              <div className="bg-gray-700/50 p-4 rounded-lg border border-gray-600 mb-6">
+                <h3 className="text-lg font-bold text-white mb-3">📁 Export Keys</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <Button
+                    onClick={() => exportKeys('active')}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export Active
+                  </Button>
+                  <Button
+                    onClick={() => exportKeys('used')}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export Used
+                  </Button>
+                  <Button
+                    onClick={() => exportKeys('all')}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export All
                   </Button>
                 </div>
               </div>
@@ -523,14 +662,29 @@ const AdminPanel = () => {
                   >
                     Generate
                   </Button>
-                  <Button
-                    onClick={addTempPasswordHandler}
-                    disabled={!newTempPassword.trim()}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    Add Password
-                  </Button>
                 </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-2">Duration (hours)</label>
+                  <Input
+                    type="number"
+                    value={tempPasswordDuration}
+                    onChange={(e) => setTempPasswordDuration(Math.max(0.001, Math.min(720, parseFloat(e.target.value) || 24)))}
+                    className="bg-gray-700 border-gray-600 text-white"
+                    min={0.001}
+                    max={720}
+                    step={0.001}
+                  />
+                  <p className="text-sm text-gray-400 mt-1">From 1 second (0.001) to 30 days (720 hours)</p>
+                </div>
+                
+                <Button
+                  onClick={addTempPasswordHandler}
+                  disabled={!newTempPassword.trim()}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  Add Password ({tempPasswordDuration}h duration)
+                </Button>
               </div>
 
               <div className="space-y-2">
@@ -538,7 +692,9 @@ const AdminPanel = () => {
                 <div className="max-h-64 overflow-y-auto space-y-2">
                   {tempPasswords.map((password, index) => (
                     <div key={index} className="bg-gray-700 p-3 rounded flex justify-between items-center">
-                      <span className="text-white font-mono">{password}</span>
+                      <div>
+                        <span className="text-white font-mono">{password}</span>
+                      </div>
                       <Button
                         onClick={() => removeTempPasswordHandler(password)}
                         className="bg-red-600 hover:bg-red-700 text-xs"

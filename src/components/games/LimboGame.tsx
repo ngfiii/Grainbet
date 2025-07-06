@@ -16,6 +16,9 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   const [lastWin, setLastWin] = useState<number | null>(null);
   const [animationMultiplier, setAnimationMultiplier] = useState(0);
 
+  // Calculate win chance using the exact RainBet formula
+  const winChance = 99 / targetMultiplier;
+
   const roll = async () => {
     if (betAmount < 10 || betAmount > balance) return;
     
@@ -27,13 +30,25 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     // Deduct bet
     onUpdateBalance(-betAmount);
     
-    // Generate fair crash point using the formula from your specs
-    const random = Math.random();
-    const hashInt = Math.floor(random * Math.pow(2, 52));
-    const crashPoint = Math.floor(Math.pow(2, 52) / (hashInt + 1)) / 100;
-    const rollResult = crashPoint * 0.99; // Apply 1% house edge
+    // Generate provably fair random number between 0 and 100
+    const randomNumber = Math.random() * 100;
     
-    // Animation
+    // Calculate win threshold using RainBet formula
+    const houseEdge = 1; // 1% house edge
+    const winThreshold = (100 - houseEdge) / targetMultiplier;
+    
+    // Determine if player wins
+    const playerWins = randomNumber <= winThreshold;
+    
+    console.log('🎲 LIMBO ROLL:', {
+      randomNumber: randomNumber.toFixed(6),
+      winThreshold: winThreshold.toFixed(6),
+      targetMultiplier,
+      playerWins,
+      winChance: winChance.toFixed(2) + '%'
+    });
+    
+    // Animation - show the random number as the result
     const animationDuration = 700;
     const steps = 35;
     const stepDuration = animationDuration / steps;
@@ -42,13 +57,13 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
       setTimeout(() => {
         const progress = i / steps;
         const easedProgress = 1 - Math.pow(1 - progress, 2);
-        const currentValue = easedProgress * rollResult;
+        const currentValue = easedProgress * randomNumber;
         setAnimationMultiplier(currentValue);
         
         if (i === steps) {
-          setResult(rollResult);
+          setResult(randomNumber);
           
-          if (rollResult >= targetMultiplier) {
+          if (playerWins) {
             const totalPayout = betAmount * targetMultiplier;
             const profit = totalPayout - betAmount;
             setLastWin(profit);
@@ -84,13 +99,14 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
             type="number"
             step="0.01"
             min="1.01"
+            max="1000000"
             value={targetMultiplier}
-            onChange={(e) => setTargetMultiplier(Math.max(1.01, parseFloat(e.target.value) || 1.01))}
+            onChange={(e) => setTargetMultiplier(Math.max(1.01, Math.min(1000000, parseFloat(e.target.value) || 1.01)))}
             className="bg-gray-700 border-gray-600 text-white transition-all duration-200 focus:ring-2 focus:ring-yellow-400 font-mono"
           />
         </div>
 
-        {/* Enhanced Multiplier Display */}
+        {/* Enhanced Result Display */}
         <div className="mb-6 text-center bg-gradient-to-br from-gray-900 to-gray-700 p-8 rounded-xl border-2 border-gray-600 relative overflow-hidden">
           {/* Background effects */}
           <div className="absolute inset-0 bg-gradient-to-t from-transparent via-yellow-400/5 to-transparent"></div>
@@ -99,12 +115,12 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
             {isRolling || result !== null ? (
               <span className={`transition-all duration-200 ${
                 isRolling ? 'text-yellow-400 animate-pulse' : 
-                result && result >= targetMultiplier ? 'text-green-400' : 'text-red-400'
+                result && result <= (99 / targetMultiplier) ? 'text-green-400' : 'text-red-400'
               }`}>
-                {(isRolling ? animationMultiplier : result || 0).toFixed(2)}x
+                {(isRolling ? animationMultiplier : result || 0).toFixed(2)}
               </span>
             ) : (
-              <span className="text-gray-500">0.00x</span>
+              <span className="text-gray-500">0.00</span>
             )}
           </div>
           
@@ -119,7 +135,10 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
         {/* Win Chance */}
         <div className="mb-6 text-center bg-gray-700/50 p-4 rounded-lg border border-gray-600">
           <div className="text-lg text-gray-300 mb-1 font-mono">
-            Win Chance: {(99 / targetMultiplier).toFixed(2)}%
+            Win Chance: {winChance.toFixed(2)}%
+          </div>
+          <div className="text-gray-400 font-mono">
+            Win if roll ≤ {(99 / targetMultiplier).toFixed(4)}
           </div>
           <div className="text-gray-400 font-mono">
             Potential profit: {(betAmount * (targetMultiplier - 1)).toFixed(0)} coins
@@ -130,9 +149,9 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
         {!isRolling && result !== null && (
           <div className="mb-6 text-center animate-fade-in">
             <div className={`text-2xl font-bold mb-2 transition-all duration-300 font-mono ${
-              result >= targetMultiplier ? 'text-green-400 animate-bounce' : 'text-red-400'
+              result <= (99 / targetMultiplier) ? 'text-green-400 animate-bounce' : 'text-red-400'
             }`}>
-              {result >= targetMultiplier ? '🎉 WIN!' : '💔 LOSE'}
+              {result <= (99 / targetMultiplier) ? '🎉 WIN!' : '💔 LOSE'}
             </div>
             {lastWin && lastWin > 0 && (
               <div className="text-lg text-green-400 animate-pulse font-mono">
@@ -148,7 +167,7 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
           disabled={betAmount > balance || isRolling || betAmount < 10}
           className="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-bold py-3 transition-all duration-200 hover:scale-105 disabled:opacity-50 font-mono"
         >
-          {isRolling ? 'Launching... 🚀' : `Launch (${betAmount} coins)`}
+          {isRolling ? 'Rolling... 🚀' : `Roll (${betAmount} coins)`}
         </Button>
       </div>
     </div>

@@ -30,10 +30,10 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     initializeEmptyGrid();
   }, []);
 
-  // Update multiplier when revealed count or mines count changes - FIXED Rainbet formula
+  // Update multiplier when revealed count or mines count changes - FIXED with exact algorithm
   useEffect(() => {
     if (revealedCount > 0) {
-      const newMultiplier = calculateRainbetMultiplier(revealedCount, minesCount);
+      const newMultiplier = calculateMinesMultiplier(revealedCount, 25, minesCount, 0.01);
       setCurrentMultiplier(newMultiplier);
       console.log(`🎯 MINES MULTIPLIER: ${revealedCount} safe tiles, ${minesCount} mines = ${newMultiplier.toFixed(4)}x`);
     }
@@ -86,37 +86,20 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     return newGrid;
   };
 
-  // FIXED: Exact Rainbet Mines multiplier calculation
-  const calculateRainbetMultiplier = (safeClicks: number, mines: number) => {
-    if (safeClicks === 0) return 1;
-    
-    const totalTiles = 25;
-    const safeTiles = totalTiles - mines;
-    const houseEdge = 0.01; // 1% house edge
-    
-    console.log(`🔥 RAINBET MULTIPLIER CALC:`);
-    console.log(`📊 Total: ${totalTiles}, Mines: ${mines}, Safe: ${safeTiles}, Clicks: ${safeClicks}`);
-    
-    // Calculate the probability of surviving this many clicks
-    let survivalProbability = 1;
-    
-    for (let click = 0; click < safeClicks; click++) {
-      const safeLeft = safeTiles - click;
-      const tilesLeft = totalTiles - click;
-      const stepProbability = safeLeft / tilesLeft;
-      survivalProbability *= stepProbability;
-      
-      console.log(`Step ${click + 1}: ${safeLeft}/${tilesLeft} = ${stepProbability.toFixed(6)} | Running: ${survivalProbability.toFixed(8)}`);
+  // FIXED: Exact Mines multiplier calculation using the provided algorithm
+  const calculateMinesMultiplier = (clickedTiles: number, totalTiles: number = 25, totalMines: number, houseEdge: number = 0.01) => {
+    let probability = 1.0;
+    let remainingMines = totalMines;
+    let remainingTiles = totalTiles;
+
+    for (let i = 0; i < clickedTiles; i++) {
+      // chance this tile is safe
+      probability *= (remainingTiles - remainingMines) / remainingTiles;
+      remainingTiles--;
     }
-    
-    // Multiplier = 1 / survival probability * (1 - house edge)
-    const fairMultiplier = 1 / survivalProbability;
-    const finalMultiplier = fairMultiplier * (1 - houseEdge);
-    
-    console.log(`💰 Fair Payout: ${fairMultiplier.toFixed(6)}x`);
-    console.log(`🏠 With House Edge: ${finalMultiplier.toFixed(6)}x`);
-    console.log(`✅ FINAL MULTIPLIER: ${finalMultiplier.toFixed(4)}x`);
-    
+
+    const rawMultiplier = 1 / probability;
+    const finalMultiplier = rawMultiplier * (1 - houseEdge);
     return finalMultiplier;
   };
 
