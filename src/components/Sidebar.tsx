@@ -19,9 +19,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   collapsed,
   onToggle 
 }) => {
-  const { user } = useAuth();
-  const isAdmin = user?.email?.toLowerCase() === 'ngfi' || user?.id === 'ngfi';
-
   const games = [
     { id: 'dashboard' as Game, name: 'Dashboard', emoji: '🏠' },
     { id: 'dice' as Game, name: 'Dice', emoji: '🎲' },
@@ -73,21 +70,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </Button>
         ))}
 
-        {/* Admin Panel Link - Only show if user is authenticated and is admin */}
-        {isAdmin && (
-          <Link to="/admin" className="block">
-            <Button
-              variant="ghost"
-              className={cn(
-                "w-full justify-start font-mono transition-all duration-200 text-red-400 hover:text-white hover:bg-red-700/20",
-                collapsed ? "px-2" : "px-4"
-              )}
-            >
-              <span className="text-lg mr-3 flex-shrink-0">⚙️</span>
-              {!collapsed && <span className="truncate">Admin Panel</span>}
-            </Button>
-          </Link>
-        )}
+        {/* Admin Panel Link - Show to all users */}
+        <Link to="/admin" className="block">
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full justify-start font-mono transition-all duration-200 text-red-400 hover:text-white hover:bg-red-700/20",
+              collapsed ? "px-2" : "px-4"
+            )}
+          >
+            <span className="text-lg mr-3 flex-shrink-0">⚙️</span>
+            {!collapsed && <span className="truncate">Admin Panel</span>}
+          </Button>
+        </Link>
       </div>
 
       {/* Footer */}

@@ -395,6 +395,20 @@ const AdminPanel = () => {
     }
   };
 
+  const exportKeysToTxt = () => {
+    const content = keys.map(key => `${key.code} - ${key.amount} coins`).join('\n');
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `grainbet-keys-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success('Keys exported to TXT file');
+  };
+
   if (!user && !isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
@@ -535,6 +549,25 @@ const AdminPanel = () => {
                   >
                     Delete ALL Keys
                   </Button>
+                </CardContent>
+              </Card>
+
+              {/* Export Keys */}
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-blue-400">Export Keys</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Button
+                    onClick={exportKeysToTxt}
+                    disabled={loading || keys.length === 0}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                  >
+                    Export All Keys to TXT
+                  </Button>
+                  <p className="text-xs text-gray-400">
+                    Exports keys in format: "CODE - X coins"
+                  </p>
                 </CardContent>
               </Card>
 
