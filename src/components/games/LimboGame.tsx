@@ -15,41 +15,56 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   const [lastWin, setLastWin] = useState<number | null>(null);
   const [animatedResult, setAnimatedResult] = useState<number>(0);
 
-  const winChance = Math.min(99, Math.max(1, (99 / targetMultiplier)));
+  const winChance = Math.min(99, Math.max(1, 99 / targetMultiplier));
 
-  // Convert hex substring to int helper
-  const hexToInt = (hex: string) => parseInt(hex.substring(0, 13), 16);
+  // Converts a hex string to a BigInt
+  const hexToBigInt = (hex: string): bigint => BigInt("0x" + hex);
 
-  // New generateLimboCrashPoint based on Stake/RainBet style odds
-  const generateLimboCrashPoint = (): number => {
-    const serverSeed = "a1b2c3d4e5f6g7h8i9j0";
-    const clientSeed = Math.random().toString(36).substring(2, 15);
-    const nonce = Math.floor(Math.random() * 1000000);
+  // Converts Uint8Array to hex string
+  const bytesToHex = (bytes: Uint8Array) =>
+    Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 
-    // Create a simple hash from combined seeds (not real HMAC, but okay for demo)
-    const combinedSeed = `${serverSeed}:${clientSeed}:${nonce}`;
-    let hash = 0;
-    for (let i = 0; i < combinedSeed.length; i++) {
-      hash = (hash << 5) - hash + combinedSeed.charCodeAt(i);
-      hash |= 0;
-    }
-    // Convert hash to hex string (simulate)
-    const hashHex = Math.abs(hash).toString(16).padStart(13, '0');
+  // The real Stake/RainBet crash calculation (async)
+  async function generateCrashPoint(serverSeed: string, clientSeed: string, nonce: number): Promise<number> {
+    const encoder = new TextEncoder();
 
-    const h = hexToInt(hashHex);
+    // Import key for HMAC SHA256
+    const key = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(serverSeed),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
 
-    if (h % 33 === 0) return 1.0; // Instant crash ~1/33 chance
+    // Message = `${clientSeed}:${nonce}`
+    const message = encoder.encode(`${clientSeed}:${nonce}`);
 
-    // e = 2^52, as used in Stake formula
-    const e = 2 ** 52;
+    // Compute HMAC
+    const signature = await crypto.subtle.sign("HMAC", key, message);
 
-    // Crash calculation formula (Stake/RainBet style)
-    const result = Math.floor((100 * e - h) / (e - h)) / 100;
+    // Convert signature to hex
+    const hashHex = bytesToHex(new Uint8Array(signature));
 
-    return Math.max(result, 1.0);
-  };
+    // Convert to BigInt
+    const h = hexToBigInt(hashHex);
 
-  const roll = () => {
+    // 2^52 constant
+    const e = BigInt(2) ** BigInt(52);
+
+    // Stake formula:
+    if (h % BigInt(33) === BigInt(0)) return 1.0;
+
+    const numerator = (BigInt(100) * e) - h;
+    const denominator = e - h;
+
+    // Integer division for floor
+    const result = Number(numerator * BigInt(1) / denominator) / 100;
+
+    return Math.max(result, 1);
+  }
+
+  const roll = async () => {
     if (betAmount < 10 || betAmount > balance) return;
 
     setIsRolling(true);
@@ -59,7 +74,12 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
 
     onUpdateBalance(-betAmount);
 
-    const crashPoint = generateLimboCrashPoint();
+    // For real use, rotate and keep serverSeed secret & reveal it later.
+    const serverSeed = "your_secret_server_seed_which_should_be_kept_secret";
+    const clientSeed = Math.random().toString(36).substring(2, 15);
+    const nonce = Math.floor(Math.random() * 1000000);
+
+    const crashPoint = await generateCrashPoint(serverSeed, clientSeed, nonce);
 
     console.log('🚀 LIMBO ROLL:', {
       crashPoint: crashPoint.toFixed(2),
