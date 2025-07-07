@@ -17,18 +17,14 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
 
   const winChance = Math.min(99, Math.max(1, 99 / targetMultiplier));
 
-  // Converts a hex string to a BigInt
   const hexToBigInt = (hex: string): bigint => BigInt("0x" + hex);
 
-  // Converts Uint8Array to hex string
   const bytesToHex = (bytes: Uint8Array) =>
     Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 
-  // The real Stake/RainBet crash calculation (async)
   async function generateCrashPoint(serverSeed: string, clientSeed: string, nonce: number): Promise<number> {
     const encoder = new TextEncoder();
 
-    // Import key for HMAC SHA256
     const key = await crypto.subtle.importKey(
       "raw",
       encoder.encode(serverSeed),
@@ -37,29 +33,23 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
       ["sign"]
     );
 
-    // Message = `${clientSeed}:${nonce}`
     const message = encoder.encode(`${clientSeed}:${nonce}`);
 
-    // Compute HMAC
     const signature = await crypto.subtle.sign("HMAC", key, message);
 
-    // Convert signature to hex
     const hashHex = bytesToHex(new Uint8Array(signature));
 
-    // Convert to BigInt
     const h = hexToBigInt(hashHex);
 
-    // 2^52 constant
     const e = BigInt(2) ** BigInt(52);
 
-    // Stake formula:
     if (h % BigInt(33) === BigInt(0)) return 1.0;
 
-    const numerator = (BigInt(100) * e) - h;
+    const numerator = (e * BigInt(100)) - h;
     const denominator = e - h;
 
-    // Integer division for floor
-    const result = Number(numerator * BigInt(1) / denominator) / 100;
+    // Correct floor first, then divide by 100
+    const result = Number((numerator * BigInt(1)) / denominator) / 100;
 
     return Math.max(result, 1);
   }
@@ -74,7 +64,6 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
 
     onUpdateBalance(-betAmount);
 
-    // For real use, rotate and keep serverSeed secret & reveal it later.
     const serverSeed = "your_secret_server_seed_which_should_be_kept_secret";
     const clientSeed = Math.random().toString(36).substring(2, 15);
     const nonce = Math.floor(Math.random() * 1000000);
@@ -88,28 +77,31 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
       winChance: winChance.toFixed(2) + '%'
     });
 
-    const animationDuration = 700;
-    const steps = 42;
-    const stepDuration = animationDuration / steps;
+    // Animate smoothly using requestAnimationFrame
+    const animationDuration = 700; // ms
+    const startTime = performance.now();
 
-    for (let i = 0; i <= steps; i++) {
-      setTimeout(() => {
-        const progress = i / steps;
-        const currentValue = 1 + (crashPoint - 1) * progress;
-        setAnimatedResult(currentValue);
+    const animate = (time: number) => {
+      const elapsed = time - startTime;
+      const progress = Math.min(elapsed / animationDuration, 1);
+      const currentValue = 1 + (crashPoint - 1) * progress;
+      setAnimatedResult(currentValue);
 
-        if (i === steps) {
-          setResult(crashPoint);
-          if (crashPoint >= targetMultiplier) {
-            const totalPayout = betAmount * targetMultiplier;
-            const profit = totalPayout - betAmount;
-            setLastWin(profit);
-            onUpdateBalance(totalPayout);
-          }
-          setIsRolling(false);
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        setResult(crashPoint);
+        if (crashPoint >= targetMultiplier) {
+          const totalPayout = betAmount * targetMultiplier;
+          const profit = totalPayout - betAmount;
+          setLastWin(profit);
+          onUpdateBalance(totalPayout);
         }
-      }, i * stepDuration);
-    }
+        setIsRolling(false);
+      }
+    };
+
+    requestAnimationFrame(animate);
   };
 
   return (
