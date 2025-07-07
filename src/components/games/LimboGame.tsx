@@ -19,28 +19,56 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   // Calculate win chance based on target multiplier
   const winChance = Math.min(99, Math.max(1, (99 / targetMultiplier)));
 
-  // Fixed Limbo crash point generation - more realistic distribution
+  // Exact Limbo crash point generation with your specified odds
   const generateLimboCrashPoint = (): number => {
-    const random = Math.random();
+    const random = Math.random() * 100; // 0-100 for percentage
     
-    // More realistic Limbo distribution
-    // 60% chance between 1.00x - 2.00x
-    // 25% chance between 2.00x - 5.00x  
-    // 10% chance between 5.00x - 10.00x
-    // 5% chance between 10.00x - 100.00x
-    
-    if (random < 0.6) {
-      // 1.00x to 2.00x
+    // Cumulative probability distribution
+    if (random < 50.00) {
+      // 1.00x - 2.00x (50.00%)
       return 1.00 + Math.random() * 1.00;
-    } else if (random < 0.85) {
-      // 2.00x to 5.00x
-      return 2.00 + Math.random() * 3.00;
-    } else if (random < 0.95) {
-      // 5.00x to 10.00x
-      return 5.00 + Math.random() * 5.00;
+    } else if (random < 66.67) {
+      // 2.00x - 3.00x (16.67%)
+      return 2.00 + Math.random() * 1.00;
+    } else if (random < 75.00) {
+      // 3.00x - 4.00x (8.33%)
+      return 3.00 + Math.random() * 1.00;
+    } else if (random < 80.00) {
+      // 4.00x - 5.00x (5.00%)
+      return 4.00 + Math.random() * 1.00;
+    } else if (random < 83.33) {
+      // 5.00x - 6.00x (3.33%)
+      return 5.00 + Math.random() * 1.00;
+    } else if (random < 85.71) {
+      // 6.00x - 7.00x (2.38%)
+      return 6.00 + Math.random() * 1.00;
+    } else if (random < 87.50) {
+      // 7.00x - 8.00x (1.79%)
+      return 7.00 + Math.random() * 1.00;
+    } else if (random < 88.89) {
+      // 8.00x - 9.00x (1.39%)
+      return 8.00 + Math.random() * 1.00;
+    } else if (random < 90.00) {
+      // 9.00x - 10.00x (1.11%)
+      return 9.00 + Math.random() * 1.00;
+    } else if (random < 92.22) {
+      // 10.00x - 15.00x (2.22%)
+      return 10.00 + Math.random() * 5.00;
+    } else if (random < 93.33) {
+      // 15.00x - 20.00x (1.11%)
+      return 15.00 + Math.random() * 5.00;
+    } else if (random < 94.00) {
+      // 20.00x - 25.00x (0.67%)
+      return 20.00 + Math.random() * 5.00;
+    } else if (random < 95.00) {
+      // 25.00x - 50.00x (1.00%)
+      return 25.00 + Math.random() * 25.00;
+    } else if (random < 95.50) {
+      // 50.00x - 100.00x (0.50%)
+      return 50.00 + Math.random() * 50.00;
     } else {
-      // 10.00x to 100.00x
-      return 10.00 + Math.random() * 90.00;
+      // 100.00x and higher (~1.00% total)
+      return 100.00 + Math.random() * 900.00; // Up to 1000x
     }
   };
 
@@ -55,7 +83,7 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
     // Deduct bet
     onUpdateBalance(-betAmount);
     
-    // Generate the crash point using fixed distribution
+    // Generate the crash point using exact distribution
     const crashPoint = generateLimboCrashPoint();
     
     console.log('🚀 LIMBO ROLL:', {
@@ -94,12 +122,12 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-2xl">
-        <h2 className="text-3xl font-bold text-yellow-400 mb-6 text-center font-mono">🚀 Limbo</h2>
+    <div className="max-w-2xl mx-auto p-4">
+      <div className="bg-gray-800 p-4 md:p-6 rounded-lg border border-gray-700 shadow-2xl">
+        <h2 className="text-2xl md:text-3xl font-bold text-yellow-400 mb-4 md:mb-6 text-center font-mono">🚀 Limbo</h2>
         
         {/* Bet Amount */}
-        <div className="mb-6">
+        <div className="mb-4 md:mb-6">
           <label className="block text-sm font-medium mb-2 font-mono">Bet Amount (min: 10)</label>
           <Input
             type="number"
@@ -111,7 +139,7 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
         </div>
 
         {/* Target Multiplier */}
-        <div className="mb-6">
+        <div className="mb-4 md:mb-6">
           <label className="block text-sm font-medium mb-2 font-mono">Target Multiplier</label>
           <Input
             type="number"
@@ -125,10 +153,10 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
         </div>
 
         {/* Result Display with Animation */}
-        <div className="mb-6 text-center bg-gradient-to-br from-gray-900 to-gray-700 p-8 rounded-xl border-2 border-gray-600 relative overflow-hidden">
+        <div className="mb-4 md:mb-6 text-center bg-gradient-to-br from-gray-900 to-gray-700 p-6 md:p-8 rounded-xl border-2 border-gray-600 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-t from-transparent via-yellow-400/5 to-transparent"></div>
           
-          <div className="text-6xl font-bold mb-2 font-mono relative z-10">
+          <div className="text-4xl md:text-6xl font-bold mb-2 font-mono relative z-10">
             {isRolling ? (
               <span className={`transition-all duration-100 ${
                 animatedResult >= targetMultiplier ? 'text-green-400' : 'text-yellow-400'
@@ -149,34 +177,34 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
           {/* Rocket effect during animation */}
           {isRolling && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-4xl animate-bounce">🚀</div>
+              <div className="text-2xl md:text-4xl animate-bounce">🚀</div>
             </div>
           )}
         </div>
 
         {/* Win Chance Display */}
-        <div className="mb-6 text-center bg-gray-700/50 p-4 rounded-lg border border-gray-600">
-          <div className="text-lg text-gray-300 mb-1 font-mono">
+        <div className="mb-4 md:mb-6 text-center bg-gray-700/50 p-3 md:p-4 rounded-lg border border-gray-600">
+          <div className="text-base md:text-lg text-gray-300 mb-1 font-mono">
             Win Chance: {winChance.toFixed(2)}%
           </div>
-          <div className="text-gray-400 font-mono">
+          <div className="text-sm md:text-base text-gray-400 font-mono">
             Target: {targetMultiplier.toFixed(2)}x multiplier
           </div>
-          <div className="text-gray-400 font-mono">
+          <div className="text-sm md:text-base text-gray-400 font-mono">
             Potential profit: {(betAmount * (targetMultiplier - 1)).toFixed(0)} coins
           </div>
         </div>
 
         {/* Result Display */}
         {!isRolling && result !== null && (
-          <div className="mb-6 text-center animate-fade-in">
-            <div className={`text-2xl font-bold mb-2 transition-all duration-300 font-mono ${
+          <div className="mb-4 md:mb-6 text-center animate-fade-in">
+            <div className={`text-xl md:text-2xl font-bold mb-2 transition-all duration-300 font-mono ${
               result >= targetMultiplier ? 'text-green-400 animate-bounce' : 'text-red-400'
             }`}>
               {result >= targetMultiplier ? '🎉 WIN!' : '💔 CRASHED!'}
             </div>
             {lastWin && lastWin > 0 && (
-              <div className="text-lg text-green-400 animate-pulse font-mono">
+              <div className="text-base md:text-lg text-green-400 animate-pulse font-mono">
                 +{lastWin.toFixed(0)} coins profit
               </div>
             )}
@@ -187,7 +215,7 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
         <Button
           onClick={roll}
           disabled={betAmount > balance || isRolling || betAmount < 10}
-          className="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-bold py-3 transition-all duration-200 hover:scale-105 disabled:opacity-50 font-mono"
+          className="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-bold py-3 transition-all duration-200 hover:scale-105 disabled:opacity-50 font-mono text-sm md:text-base"
         >
           {isRolling ? 'Rolling... 🚀' : `Roll (${betAmount} coins)`}
         </Button>
