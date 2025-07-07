@@ -17,88 +17,29 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
 
   const winChance = Math.min(99, Math.max(1, 99 / targetMultiplier));
 
-  // Toggle which generator to use:
-  const useManual = false; // set to true to use manual CDF interpolation, false to use math-based generator
-
-  // Data for mathematical generator:
-  const multiplierRanges = [
-    { min: 1.00, max: 2.00, probMin: 1.0, probMax: 0.5 },
-    { min: 2.00, max: 3.00, probMin: 0.5, probMax: 0.3333 },
-    { min: 3.00, max: 4.00, probMin: 0.3333, probMax: 0.25 },
-    { min: 4.00, max: 5.00, probMin: 0.25, probMax: 0.2 },
-    { min: 5.00, max: 6.00, probMin: 0.2, probMax: 0.1667 },
-    { min: 6.00, max: 7.00, probMin: 0.1667, probMax: 0.1429 },
-    { min: 7.00, max: 8.00, probMin: 0.1429, probMax: 0.125 },
-    { min: 8.00, max: 9.00, probMin: 0.125, probMax: 0.1111 },
-    { min: 9.00, max: 10.00, probMin: 0.1111, probMax: 0.1 },
-    { min: 10.00, max: 15.00, probMin: 0.1, probMax: 0.0667 },
-    { min: 15.00, max: 20.00, probMin: 0.0667, probMax: 0.05 },
-    { min: 20.00, max: 25.00, probMin: 0.05, probMax: 0.04 },
-    { min: 25.00, max: 30.00, probMin: 0.04, probMax: 0.0333 },
-    { min: 30.00, max: 35.00, probMin: 0.0333, probMax: 0.0286 },
-    { min: 35.00, max: 40.00, probMin: 0.0286, probMax: 0.025 },
-    { min: 40.00, max: 45.00, probMin: 0.025, probMax: 0.0222 },
-    { min: 45.00, max: 50.00, probMin: 0.0222, probMax: 0.02 },
-  ];
-
-  // Manual CDF data for manual generator:
-  const rainbetCdfManual = [
-    { multiplier: 1.00, cumProb: 1.0 },
-    { multiplier: 2.00, cumProb: 0.5 },
-    { multiplier: 3.00, cumProb: 0.3333 },
-    { multiplier: 4.00, cumProb: 0.25 },
-    { multiplier: 5.00, cumProb: 0.2 },
-    { multiplier: 6.00, cumProb: 0.1667 },
-    { multiplier: 7.00, cumProb: 0.1429 },
-    { multiplier: 8.00, cumProb: 0.125 },
-    { multiplier: 9.00, cumProb: 0.1111 },
-    { multiplier: 10.00, cumProb: 0.1 },
-    { multiplier: 15.00, cumProb: 0.0667 },
-    { multiplier: 20.00, cumProb: 0.05 },
-    { multiplier: 25.00, cumProb: 0.04 },
-    { multiplier: 30.00, cumProb: 0.0333 },
-    { multiplier: 35.00, cumProb: 0.0286 },
-    { multiplier: 40.00, cumProb: 0.025 },
-    { multiplier: 45.00, cumProb: 0.0222 },
-    { multiplier: 50.00, cumProb: 0.02 },
-  ];
-
-  const generateCrashPointMath = (): number => {
-    const p = Math.random();
-
-    for (const range of multiplierRanges) {
-      if (p <= range.probMin && p > range.probMax) {
-        const probInterval = range.probMin - range.probMax;
-        const localP = (p - range.probMax) / probInterval;
-        const multiplier = range.min + localP * (range.max - range.min);
-        return parseFloat(multiplier.toFixed(2));
-      }
-    }
-    // Fallback:
-    return 1.0;
-  };
-
-  const generateCrashPointManual = (): number => {
+  // Updated Limbo crash point generation with precise odds
+  const generateLimboCrashPoint = (): number => {
     const r = Math.random();
-
-    // Iterate backward for correct interpolation:
-    for (let i = rainbetCdfManual.length - 1; i >= 0; i--) {
-      if (r <= rainbetCdfManual[i].cumProb) {
-        if (i === rainbetCdfManual.length - 1) return rainbetCdfManual[i].multiplier;
-
-        const curr = rainbetCdfManual[i];
-        const next = rainbetCdfManual[i + 1];
-
-        const rangeProb = next.cumProb - curr.cumProb;
-        const localP = (r - curr.cumProb) / rangeProb;
-        const multiplier = curr.multiplier + localP * (next.multiplier - curr.multiplier);
-        return parseFloat(multiplier.toFixed(2));
-      }
-    }
-    return 1.0;
+    
+    // Precise odds distribution table
+    if (r <= 0.50) return 1.00 + Math.random() * 1.00; // 1.00-2.00x (50%)
+    if (r <= 0.6667) return 2.00 + Math.random() * 1.00; // 2.00-3.00x (16.67%)
+    if (r <= 0.75) return 3.00 + Math.random() * 1.00; // 3.00-4.00x (8.33%)
+    if (r <= 0.80) return 4.00 + Math.random() * 1.00; // 4.00-5.00x (5%)
+    if (r <= 0.8333) return 5.00 + Math.random() * 1.00; // 5.00-6.00x (3.33%)
+    if (r <= 0.8571) return 6.00 + Math.random() * 1.00; // 6.00-7.00x (2.38%)
+    if (r <= 0.8750) return 7.00 + Math.random() * 1.00; // 7.00-8.00x (1.79%)
+    if (r <= 0.8889) return 8.00 + Math.random() * 1.00; // 8.00-9.00x (1.39%)
+    if (r <= 0.90) return 9.00 + Math.random() * 1.00; // 9.00-10.00x (1.11%)
+    if (r <= 0.9222) return 10.00 + Math.random() * 5.00; // 10.00-15.00x (2.22%)
+    if (r <= 0.9333) return 15.00 + Math.random() * 5.00; // 15.00-20.00x (1.11%)
+    if (r <= 0.94) return 20.00 + Math.random() * 5.00; // 20.00-25.00x (0.67%)
+    if (r <= 0.95) return 25.00 + Math.random() * 25.00; // 25.00-50.00x (1.00%)
+    if (r <= 0.955) return 50.00 + Math.random() * 50.00; // 50.00-100.00x (0.50%)
+    
+    // 100x and higher (~1.00% total)
+    return 100.00 + Math.random() * 900.00; // 100.00-1000.00x (0.45%)
   };
-
-  const generateLimboCrashPoint = () => (useManual ? generateCrashPointManual() : generateCrashPointMath());
 
   const roll = async () => {
     if (betAmount < 10 || betAmount > balance) return;
@@ -119,8 +60,9 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
       winChance: winChance.toFixed(2) + '%',
     });
 
+    // Reduced animation duration to 0.7 seconds
     const animationDuration = 700;
-    const steps = 42;
+    const steps = 35;
     const stepDuration = animationDuration / steps;
 
     for (let i = 0; i <= steps; i++) {

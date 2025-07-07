@@ -59,6 +59,39 @@ export type Database = {
         }
         Relationships: []
       }
+      game_history: {
+        Row: {
+          bet_amount: number
+          created_at: string
+          game_type: string
+          id: string
+          is_win: boolean
+          multiplier: number | null
+          payout: number
+          user_id: string
+        }
+        Insert: {
+          bet_amount: number
+          created_at?: string
+          game_type: string
+          id?: string
+          is_win: boolean
+          multiplier?: number | null
+          payout?: number
+          user_id: string
+        }
+        Update: {
+          bet_amount?: number
+          created_at?: string
+          game_type?: string
+          id?: string
+          is_win?: boolean
+          multiplier?: number | null
+          payout?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       game_saves: {
         Row: {
           created_at: string
@@ -152,12 +185,76 @@ export type Database = {
         }
         Relationships: []
       }
+      user_stats: {
+        Row: {
+          biggest_win: number
+          created_at: string
+          current_loss_streak: number
+          current_win_streak: number
+          id: string
+          longest_loss_streak: number
+          longest_win_streak: number
+          total_bets: number
+          total_lost: number
+          total_won: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          biggest_win?: number
+          created_at?: string
+          current_loss_streak?: number
+          current_win_streak?: number
+          id?: string
+          longest_loss_streak?: number
+          longest_win_streak?: number
+          total_bets?: number
+          total_lost?: number
+          total_won?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          biggest_win?: number
+          created_at?: string
+          current_loss_streak?: number
+          current_win_streak?: number
+          id?: string
+          longest_loss_streak?: number
+          longest_win_streak?: number
+          total_bets?: number
+          total_lost?: number
+          total_won?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      leaderboard_stats: {
+        Row: {
+          balance: number | null
+          biggest_win: number | null
+          longest_win_streak: number | null
+          total_bets: number | null
+          user_id: string | null
+          username: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      update_user_stats: {
+        Args: {
+          p_user_id: string
+          p_bet_amount: number
+          p_payout: number
+          p_is_win: boolean
+          p_multiplier?: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
