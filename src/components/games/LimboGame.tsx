@@ -7,33 +7,6 @@ interface GameProps {
   onUpdateBalance: (amount: number) => void;
 }
 
-// Manual weighted multipliers and odds (sum close to 1)
-const weightedMultipliers = [
-  { multiplier: 1.01, weight: 0.60 },
-  { multiplier: 1.05, weight: 0.15 },
-  { multiplier: 1.25, weight: 0.08 },
-  { multiplier: 1.5, weight: 0.05 },
-  { multiplier: 2.0, weight: 0.04 },
-  { multiplier: 3.0, weight: 0.03 },
-  { multiplier: 5.0, weight: 0.02 },
-  { multiplier: 10.0, weight: 0.01 },
-  { multiplier: 20.0, weight: 0.005 },
-  { multiplier: 50.0, weight: 0.003 },
-  { multiplier: 100.0, weight: 0.002 },
-];
-
-const totalWeight = weightedMultipliers.reduce((sum, w) => sum + w.weight, 0);
-
-function weightedRandomPick() {
-  const rnd = Math.random() * totalWeight;
-  let accum = 0;
-  for (const entry of weightedMultipliers) {
-    accum += entry.weight;
-    if (rnd <= accum) return entry.multiplier;
-  }
-  return 1.01; // fallback safe value
-}
-
 export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
   const [betAmount, setBetAmount] = useState(10);
   const [targetMultiplier, setTargetMultiplier] = useState(2.0);
@@ -44,7 +17,90 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
 
   const winChance = Math.min(99, Math.max(1, 99 / targetMultiplier));
 
-  const roll = () => {
+  // Toggle which generator to use:
+  const useManual = false; // set to true to use manual CDF interpolation, false to use math-based generator
+
+  // Data for mathematical generator:
+  const multiplierRanges = [
+    { min: 1.00, max: 2.00, probMin: 1.0, probMax: 0.5 },
+    { min: 2.00, max: 3.00, probMin: 0.5, probMax: 0.3333 },
+    { min: 3.00, max: 4.00, probMin: 0.3333, probMax: 0.25 },
+    { min: 4.00, max: 5.00, probMin: 0.25, probMax: 0.2 },
+    { min: 5.00, max: 6.00, probMin: 0.2, probMax: 0.1667 },
+    { min: 6.00, max: 7.00, probMin: 0.1667, probMax: 0.1429 },
+    { min: 7.00, max: 8.00, probMin: 0.1429, probMax: 0.125 },
+    { min: 8.00, max: 9.00, probMin: 0.125, probMax: 0.1111 },
+    { min: 9.00, max: 10.00, probMin: 0.1111, probMax: 0.1 },
+    { min: 10.00, max: 15.00, probMin: 0.1, probMax: 0.0667 },
+    { min: 15.00, max: 20.00, probMin: 0.0667, probMax: 0.05 },
+    { min: 20.00, max: 25.00, probMin: 0.05, probMax: 0.04 },
+    { min: 25.00, max: 30.00, probMin: 0.04, probMax: 0.0333 },
+    { min: 30.00, max: 35.00, probMin: 0.0333, probMax: 0.0286 },
+    { min: 35.00, max: 40.00, probMin: 0.0286, probMax: 0.025 },
+    { min: 40.00, max: 45.00, probMin: 0.025, probMax: 0.0222 },
+    { min: 45.00, max: 50.00, probMin: 0.0222, probMax: 0.02 },
+  ];
+
+  // Manual CDF data for manual generator:
+  const rainbetCdfManual = [
+    { multiplier: 1.00, cumProb: 1.0 },
+    { multiplier: 2.00, cumProb: 0.5 },
+    { multiplier: 3.00, cumProb: 0.3333 },
+    { multiplier: 4.00, cumProb: 0.25 },
+    { multiplier: 5.00, cumProb: 0.2 },
+    { multiplier: 6.00, cumProb: 0.1667 },
+    { multiplier: 7.00, cumProb: 0.1429 },
+    { multiplier: 8.00, cumProb: 0.125 },
+    { multiplier: 9.00, cumProb: 0.1111 },
+    { multiplier: 10.00, cumProb: 0.1 },
+    { multiplier: 15.00, cumProb: 0.0667 },
+    { multiplier: 20.00, cumProb: 0.05 },
+    { multiplier: 25.00, cumProb: 0.04 },
+    { multiplier: 30.00, cumProb: 0.0333 },
+    { multiplier: 35.00, cumProb: 0.0286 },
+    { multiplier: 40.00, cumProb: 0.025 },
+    { multiplier: 45.00, cumProb: 0.0222 },
+    { multiplier: 50.00, cumProb: 0.02 },
+  ];
+
+  const generateCrashPointMath = (): number => {
+    const p = Math.random();
+
+    for (const range of multiplierRanges) {
+      if (p <= range.probMin && p > range.probMax) {
+        const probInterval = range.probMin - range.probMax;
+        const localP = (p - range.probMax) / probInterval;
+        const multiplier = range.min + localP * (range.max - range.min);
+        return parseFloat(multiplier.toFixed(2));
+      }
+    }
+    // Fallback:
+    return 1.0;
+  };
+
+  const generateCrashPointManual = (): number => {
+    const r = Math.random();
+
+    // Iterate backward for correct interpolation:
+    for (let i = rainbetCdfManual.length - 1; i >= 0; i--) {
+      if (r <= rainbetCdfManual[i].cumProb) {
+        if (i === rainbetCdfManual.length - 1) return rainbetCdfManual[i].multiplier;
+
+        const curr = rainbetCdfManual[i];
+        const next = rainbetCdfManual[i + 1];
+
+        const rangeProb = next.cumProb - curr.cumProb;
+        const localP = (r - curr.cumProb) / rangeProb;
+        const multiplier = curr.multiplier + localP * (next.multiplier - curr.multiplier);
+        return parseFloat(multiplier.toFixed(2));
+      }
+    }
+    return 1.0;
+  };
+
+  const generateLimboCrashPoint = () => (useManual ? generateCrashPointManual() : generateCrashPointMath());
+
+  const roll = async () => {
     if (betAmount < 10 || betAmount > balance) return;
 
     setIsRolling(true);
@@ -54,39 +110,37 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
 
     onUpdateBalance(-betAmount);
 
-    const crashPoint = weightedRandomPick();
+    const crashPoint = generateLimboCrashPoint();
 
     console.log('🚀 LIMBO ROLL:', {
       crashPoint: crashPoint.toFixed(2),
       targetMultiplier: targetMultiplier.toFixed(2),
       playerWins: crashPoint >= targetMultiplier,
-      winChance: winChance.toFixed(2) + '%'
+      winChance: winChance.toFixed(2) + '%',
     });
 
     const animationDuration = 700;
-    const startTime = performance.now();
+    const steps = 42;
+    const stepDuration = animationDuration / steps;
 
-    const animate = (time: number) => {
-      const elapsed = time - startTime;
-      const progress = Math.min(elapsed / animationDuration, 1);
-      const currentValue = 1 + (crashPoint - 1) * progress;
-      setAnimatedResult(currentValue);
+    for (let i = 0; i <= steps; i++) {
+      setTimeout(() => {
+        const progress = i / steps;
+        const currentValue = 1 + (crashPoint - 1) * progress;
+        setAnimatedResult(currentValue);
 
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      } else {
-        setResult(crashPoint);
-        if (crashPoint >= targetMultiplier) {
-          const totalPayout = betAmount * targetMultiplier;
-          const profit = totalPayout - betAmount;
-          setLastWin(profit);
-          onUpdateBalance(totalPayout);
+        if (i === steps) {
+          setResult(crashPoint);
+          if (crashPoint >= targetMultiplier) {
+            const totalPayout = betAmount * targetMultiplier;
+            const profit = totalPayout - betAmount;
+            setLastWin(profit);
+            onUpdateBalance(totalPayout);
+          }
+          setIsRolling(false);
         }
-        setIsRolling(false);
-      }
-    };
-
-    requestAnimationFrame(animate);
+      }, i * stepDuration);
+    }
   };
 
   return (
@@ -111,9 +165,9 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
             type="number"
             step="0.01"
             min="1.01"
-            max="100"
+            max="1000000"
             value={targetMultiplier}
-            onChange={(e) => setTargetMultiplier(Math.max(1.01, Math.min(100, parseFloat(e.target.value) || 1.01)))}
+            onChange={(e) => setTargetMultiplier(Math.max(1.01, Math.min(1000000, parseFloat(e.target.value) || 1.01)))}
             className="bg-gray-700 border-gray-600 text-white transition-all duration-200 focus:ring-2 focus:ring-yellow-400 font-mono"
           />
         </div>
@@ -142,26 +196,22 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
         </div>
 
         <div className="mb-4 md:mb-6 text-center bg-gray-700/50 p-3 md:p-4 rounded-lg border border-gray-600">
-          <div className="text-base md:text-lg text-gray-300 mb-1 font-mono">
-            Win Chance: {winChance.toFixed(2)}%
-          </div>
-          <div className="text-sm md:text-base text-gray-400 font-mono">
-            Target: {targetMultiplier.toFixed(2)}x multiplier
-          </div>
-          <div className="text-sm md:text-base text-gray-400 font-mono">
-            Potential profit: {(betAmount * (targetMultiplier - 1)).toFixed(0)} coins
-          </div>
+          <div className="text-base md:text-lg text-gray-300 mb-1 font-mono">Win Chance: {winChance.toFixed(2)}%</div>
+          <div className="text-sm md:text-base text-gray-400 font-mono">Target: {targetMultiplier.toFixed(2)}x multiplier</div>
+          <div className="text-sm md:text-base text-gray-400 font-mono">Potential profit: {(betAmount * (targetMultiplier - 1)).toFixed(0)} coins</div>
         </div>
 
         {!isRolling && result !== null && (
           <div className="mb-4 md:mb-6 text-center animate-fade-in">
-            <div className={`text-xl md:text-2xl font-bold mb-2 transition-all duration-300 font-mono ${result >= targetMultiplier ? 'text-green-400 animate-bounce' : 'text-red-400'}`}>
+            <div
+              className={`text-xl md:text-2xl font-bold mb-2 transition-all duration-300 font-mono ${
+                result >= targetMultiplier ? 'text-green-400 animate-bounce' : 'text-red-400'
+              }`}
+            >
               {result >= targetMultiplier ? '🎉 WIN!' : '💔 CRASHED!'}
             </div>
             {lastWin && lastWin > 0 && (
-              <div className="text-base md:text-lg text-green-400 animate-pulse font-mono">
-                +{lastWin.toFixed(0)} coins profit
-              </div>
+              <div className="text-base md:text-lg text-green-400 animate-pulse font-mono">+{lastWin.toFixed(0)} coins profit</div>
             )}
           </div>
         )}
