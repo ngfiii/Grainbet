@@ -10,6 +10,8 @@ import { ProtectedAdminRoute } from "@/components/ProtectedAdminRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Credits from "./pages/Credits";
+import Profile from "./pages/Profile";
+import Leaderboard from "./pages/Leaderboard";
 import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
 

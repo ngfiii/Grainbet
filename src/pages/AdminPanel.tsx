@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -82,24 +81,37 @@ const AdminPanel = () => {
       .select(`
         id,
         username,
-        user_balances!inner(balance),
-        user_stats(total_bets, biggest_win),
         created_at
       `);
     
     if (error) {
       toast.error('Failed to fetch user profiles');
+      console.error('Error fetching profiles:', error);
       return;
     }
+
+    // Get balances and stats separately
+    const { data: balanceData } = await supabase
+      .from('user_balances')
+      .select('id, balance');
+
+    const { data: statsData } = await supabase
+      .from('user_stats')
+      .select('user_id, total_bets, biggest_win');
     
-    const formattedData = data?.map(user => ({
-      id: user.id,
-      username: user.username || 'Unknown',
-      balance: user.user_balances?.balance || 0,
-      total_bets: user.user_stats?.[0]?.total_bets || 0,
-      biggest_win: user.user_stats?.[0]?.biggest_win || 0,
-      created_at: user.created_at
-    })) || [];
+    const formattedData = data?.map(user => {
+      const balance = balanceData?.find(b => b.id === user.id)?.balance || 0;
+      const stats = statsData?.find(s => s.user_id === user.id);
+      
+      return {
+        id: user.id,
+        username: user.username || 'Unknown',
+        balance: balance,
+        total_bets: stats?.total_bets || 0,
+        biggest_win: stats?.biggest_win || 0,
+        created_at: user.created_at
+      };
+    }) || [];
     
     setUserProfiles(formattedData);
   };
