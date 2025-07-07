@@ -19,11 +19,11 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   // Calculate win chance based on target multiplier
   const winChance = Math.min(99, Math.max(1, (99 / targetMultiplier)));
 
-  // Exact Limbo crash point generation with your specified odds
+  // Exact Limbo crash point generation with specified odds
   const generateLimboCrashPoint = (): number => {
     const random = Math.random() * 100; // 0-100 for percentage
     
-    // Cumulative probability distribution
+    // Cumulative probability distribution - EXACT implementation
     if (random < 50.00) {
       // 1.00x - 2.00x (50.00%)
       return 1.00 + Math.random() * 1.00;
@@ -93,9 +93,9 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
       winChance: winChance.toFixed(2) + '%'
     });
     
-    // Animate the number going up
-    const animationDuration = 1500;
-    const steps = 60;
+    // Animate the number going up - now 0.7 seconds
+    const animationDuration = 700;
+    const steps = 42;
     const stepDuration = animationDuration / steps;
     
     for (let i = 0; i <= steps; i++) {

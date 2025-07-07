@@ -73,7 +73,7 @@ export const ProtectedAdminRoute: React.FC<ProtectedAdminRouteProps> = ({ childr
           <div className="text-center mb-6">
             <div className="flex items-center justify-center space-x-2 mb-4">
               <img 
-                src="/lovable-uploads/fd6e96d2-a80d-4fd1-a06f-0c3acbef3fb5.png" 
+                src="/lovable-uploads/b02b29fd-4df8-4fd3-83d6-52e449f3c4ab.png" 
                 alt="GrainBet Logo" 
                 className="w-8 h-8"
               />

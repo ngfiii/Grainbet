@@ -47,7 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {!collapsed && (
           <div className="flex items-center space-x-2">
             <img 
-              src="/lovable-uploads/fd6e96d2-a80d-4fd1-a06f-0c3acbef3fb5.png" 
+              src="/lovable-uploads/b02b29fd-4df8-4fd3-83d6-52e449f3c4ab.png" 
               alt="GrainBet Logo" 
               className="w-6 h-6 md:w-8 md:h-8"
             />
@@ -56,7 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
         {collapsed && (
           <img 
-            src="/lovable-uploads/fd6e96d2-a80d-4fd1-a06f-0c3acbef3fb5.png" 
+            src="/lovable-uploads/b02b29fd-4df8-4fd3-83d6-52e449f3c4ab.png" 
             alt="GrainBet Logo" 
             className="w-6 h-6 mx-auto"
           />
