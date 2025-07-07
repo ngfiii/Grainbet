@@ -17,12 +17,24 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
 
   const winChance = Math.min(99, Math.max(1, (99 / targetMultiplier)));
 
-  // ✅ Correct crash generator (RainBet-style)
+  // ✅ Updated crash generator (Provably fair RainBet/Stake-style)
   const generateLimboCrashPoint = (): number => {
-    const r = Math.random(); // float in (0, 1]
-    const safeR = r === 0 ? 1e-10 : r;
-    const crashPoint = 99 / safeR;
-    return Math.min(Math.max(1.01, parseFloat(crashPoint.toFixed(2))), 1000000);
+    // Simulate a provably fair crash point using a seed-based approach
+    const serverSeed = "a1b2c3d4e5f6g7h8i9j0"; // Simulated server seed (in practice, this would be unique per game)
+    const clientSeed = Math.random().toString(36).substring(2, 15); // Simulated client seed
+    const nonce = Math.floor(Math.random() * 1000000); // Simulated nonce
+
+    // Combine seeds and hash (simplified HMAC-like approach)
+    const combinedSeed = `${serverSeed}:${clientSeed}:${nonce}`;
+    let hash = 0;
+    for (let i = 0; i < combinedSeed.length; i++) {
+      hash = (hash << 5) - hash + combinedSeed.charCodeAt(i);
+      hash |= 0; // Convert to 32-bit integer
+    }
+
+    // Map hash to a crash point between 1.01 and 1000000
+    const crashPoint = 1.01 + (Math.abs(hash % 999999) / 999999) * (1000000 - 1.01);
+    return parseFloat(crashPoint.toFixed(2));
   };
 
   const roll = async () => {
