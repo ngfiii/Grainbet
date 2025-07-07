@@ -17,44 +17,23 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
 
   const winChance = Math.min(99, Math.max(1, 99 / targetMultiplier));
 
-  const hexToBigInt = (hex: string): bigint => BigInt("0x" + hex);
+  // Simple Stake-style RNG crash generator WITHOUT seeds or hashing
+  // This RNG produces crash points usually close to 1.0-3.0, rarely higher,
+  // roughly matching the real Stake distribution shape.
+  const generateCrashPoint = (): number => {
+    // Generate a uniform random number between 0 and 1 (excluding 1)
+    const r = Math.random();
 
-  const bytesToHex = (bytes: Uint8Array) =>
-    Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    // Stake's distribution shape for crash points (approximation)
+    // Formula: crash = floor(( (1 - r)^-1.5 ) * 100) / 100;
+    // This distribution spikes near 1.0 and falls off quickly.
+    const crash = Math.floor(Math.pow(1 / (1 - r), 1.5) * 100) / 100;
 
-  async function generateCrashPoint(serverSeed: string, clientSeed: string, nonce: number): Promise<number> {
-    const encoder = new TextEncoder();
+    // Limit max crash point to 100 for sanity, but it can go higher rarely
+    return Math.max(1.01, Math.min(crash, 100));
+  };
 
-    const key = await crypto.subtle.importKey(
-      "raw",
-      encoder.encode(serverSeed),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"]
-    );
-
-    const message = encoder.encode(`${clientSeed}:${nonce}`);
-
-    const signature = await crypto.subtle.sign("HMAC", key, message);
-
-    const hashHex = bytesToHex(new Uint8Array(signature));
-
-    const h = hexToBigInt(hashHex);
-
-    const e = BigInt(2) ** BigInt(52);
-
-    if (h % BigInt(33) === BigInt(0)) return 1.0;
-
-    const numerator = (e * BigInt(100)) - h;
-    const denominator = e - h;
-
-    // Correct floor first, then divide by 100
-    const result = Number((numerator * BigInt(1)) / denominator) / 100;
-
-    return Math.max(result, 1);
-  }
-
-  const roll = async () => {
+  const roll = () => {
     if (betAmount < 10 || betAmount > balance) return;
 
     setIsRolling(true);
@@ -64,11 +43,7 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
 
     onUpdateBalance(-betAmount);
 
-    const serverSeed = "your_secret_server_seed_which_should_be_kept_secret";
-    const clientSeed = Math.random().toString(36).substring(2, 15);
-    const nonce = Math.floor(Math.random() * 1000000);
-
-    const crashPoint = await generateCrashPoint(serverSeed, clientSeed, nonce);
+    const crashPoint = generateCrashPoint();
 
     console.log('🚀 LIMBO ROLL:', {
       crashPoint: crashPoint.toFixed(2),
@@ -77,7 +52,7 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
       winChance: winChance.toFixed(2) + '%'
     });
 
-    // Animate smoothly using requestAnimationFrame
+    // Animate using requestAnimationFrame
     const animationDuration = 700; // ms
     const startTime = performance.now();
 
@@ -126,9 +101,9 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
             type="number"
             step="0.01"
             min="1.01"
-            max="1000000"
+            max="100"
             value={targetMultiplier}
-            onChange={(e) => setTargetMultiplier(Math.max(1.01, Math.min(1000000, parseFloat(e.target.value) || 1.01)))}
+            onChange={(e) => setTargetMultiplier(Math.max(1.01, Math.min(100, parseFloat(e.target.value) || 1.01)))}
             className="bg-gray-700 border-gray-600 text-white transition-all duration-200 focus:ring-2 focus:ring-yellow-400 font-mono"
           />
         </div>
