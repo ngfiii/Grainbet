@@ -7,6 +7,33 @@ interface GameProps {
   onUpdateBalance: (amount: number) => void;
 }
 
+// Manual weighted multipliers and odds (sum close to 1)
+const weightedMultipliers = [
+  { multiplier: 1.01, weight: 0.60 },
+  { multiplier: 1.05, weight: 0.15 },
+  { multiplier: 1.25, weight: 0.08 },
+  { multiplier: 1.5, weight: 0.05 },
+  { multiplier: 2.0, weight: 0.04 },
+  { multiplier: 3.0, weight: 0.03 },
+  { multiplier: 5.0, weight: 0.02 },
+  { multiplier: 10.0, weight: 0.01 },
+  { multiplier: 20.0, weight: 0.005 },
+  { multiplier: 50.0, weight: 0.003 },
+  { multiplier: 100.0, weight: 0.002 },
+];
+
+const totalWeight = weightedMultipliers.reduce((sum, w) => sum + w.weight, 0);
+
+function weightedRandomPick() {
+  const rnd = Math.random() * totalWeight;
+  let accum = 0;
+  for (const entry of weightedMultipliers) {
+    accum += entry.weight;
+    if (rnd <= accum) return entry.multiplier;
+  }
+  return 1.01; // fallback safe value
+}
+
 export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
   const [betAmount, setBetAmount] = useState(10);
   const [targetMultiplier, setTargetMultiplier] = useState(2.0);
@@ -16,22 +43,6 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   const [animatedResult, setAnimatedResult] = useState<number>(0);
 
   const winChance = Math.min(99, Math.max(1, 99 / targetMultiplier));
-
-  // Simple Stake-style RNG crash generator WITHOUT seeds or hashing
-  // This RNG produces crash points usually close to 1.0-3.0, rarely higher,
-  // roughly matching the real Stake distribution shape.
-  const generateCrashPoint = (): number => {
-    // Generate a uniform random number between 0 and 1 (excluding 1)
-    const r = Math.random();
-
-    // Stake's distribution shape for crash points (approximation)
-    // Formula: crash = floor(( (1 - r)^-1.5 ) * 100) / 100;
-    // This distribution spikes near 1.0 and falls off quickly.
-    const crash = Math.floor(Math.pow(1 / (1 - r), 1.5) * 100) / 100;
-
-    // Limit max crash point to 100 for sanity, but it can go higher rarely
-    return Math.max(1.01, Math.min(crash, 100));
-  };
 
   const roll = () => {
     if (betAmount < 10 || betAmount > balance) return;
@@ -43,7 +54,7 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
 
     onUpdateBalance(-betAmount);
 
-    const crashPoint = generateCrashPoint();
+    const crashPoint = weightedRandomPick();
 
     console.log('🚀 LIMBO ROLL:', {
       crashPoint: crashPoint.toFixed(2),
@@ -52,8 +63,7 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
       winChance: winChance.toFixed(2) + '%'
     });
 
-    // Animate using requestAnimationFrame
-    const animationDuration = 700; // ms
+    const animationDuration = 700;
     const startTime = performance.now();
 
     const animate = (time: number) => {
