@@ -56,7 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Header */}
       <div className="p-2 md:p-4 border-b border-gray-700 flex items-center justify-between">
         {!collapsed && <div className="flex items-center space-x-2">
-            <img alt="GrainBet Logo" className="w-6 h-6 md:w-8 md:h-8" src="/lovable-uploads/f53ee3bb-cbe9-48a7-82e6-f5abf00f67b2.png" />
+            <img alt="GrainBet Logo" className="w-6 h-6 md:w-8 md:h-8" src="/lovable-uploads/0e2b7d24-9680-4fbf-9e82-c6e823f02b12.png" />
             <h1 className="text-lg md:text-xl font-bold text-yellow-400 font-mono">GrainBet</h1>
           </div>}
         {collapsed && <img alt="GrainBet Logo" className="w-6 h-6 mx-auto" src="/lovable-uploads/322ea888-23a9-4c8f-8fed-cf2904d2f543.png" />}
