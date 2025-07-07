@@ -17,27 +17,39 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
 
   const winChance = Math.min(99, Math.max(1, (99 / targetMultiplier)));
 
-  // ✅ Updated crash generator (Provably fair RainBet/Stake-style)
-  const generateLimboCrashPoint = (): number => {
-    // Simulate a provably fair crash point using a seed-based approach
-    const serverSeed = "a1b2c3d4e5f6g7h8i9j0"; // Simulated server seed (in practice, this would be unique per game)
-    const clientSeed = Math.random().toString(36).substring(2, 15); // Simulated client seed
-    const nonce = Math.floor(Math.random() * 1000000); // Simulated nonce
+  // Convert hex substring to int helper
+  const hexToInt = (hex: string) => parseInt(hex.substring(0, 13), 16);
 
-    // Combine seeds and hash (simplified HMAC-like approach)
+  // New generateLimboCrashPoint based on Stake/RainBet style odds
+  const generateLimboCrashPoint = (): number => {
+    const serverSeed = "a1b2c3d4e5f6g7h8i9j0";
+    const clientSeed = Math.random().toString(36).substring(2, 15);
+    const nonce = Math.floor(Math.random() * 1000000);
+
+    // Create a simple hash from combined seeds (not real HMAC, but okay for demo)
     const combinedSeed = `${serverSeed}:${clientSeed}:${nonce}`;
     let hash = 0;
     for (let i = 0; i < combinedSeed.length; i++) {
       hash = (hash << 5) - hash + combinedSeed.charCodeAt(i);
-      hash |= 0; // Convert to 32-bit integer
+      hash |= 0;
     }
+    // Convert hash to hex string (simulate)
+    const hashHex = Math.abs(hash).toString(16).padStart(13, '0');
 
-    // Map hash to a crash point between 1.01 and 1000000
-    const crashPoint = 1.01 + (Math.abs(hash % 999999) / 999999) * (1000000 - 1.01);
-    return parseFloat(crashPoint.toFixed(2));
+    const h = hexToInt(hashHex);
+
+    if (h % 33 === 0) return 1.0; // Instant crash ~1/33 chance
+
+    // e = 2^52, as used in Stake formula
+    const e = 2 ** 52;
+
+    // Crash calculation formula (Stake/RainBet style)
+    const result = Math.floor((100 * e - h) / (e - h)) / 100;
+
+    return Math.max(result, 1.0);
   };
 
-  const roll = async () => {
+  const roll = () => {
     if (betAmount < 10 || betAmount > balance) return;
 
     setIsRolling(true);
