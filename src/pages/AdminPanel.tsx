@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +6,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Trash2, Download, Key, Clock, Settings, Users } from 'lucide-react';
-
 interface CoinKey {
   id: string;
   code: string;
@@ -17,7 +15,6 @@ interface CoinKey {
   used_at: string | null;
   used_by: string | null;
 }
-
 interface TempPassword {
   id: string;
   password: string;
@@ -25,7 +22,6 @@ interface TempPassword {
   used: boolean;
   created_at: string;
 }
-
 const AdminPanel = () => {
   const [coinKeys, setCoinKeys] = useState<CoinKey[]>([]);
   const [tempPasswords, setTempPasswords] = useState<TempPassword[]>([]);
@@ -34,40 +30,36 @@ const AdminPanel = () => {
   const [newTempPassword, setNewTempPassword] = useState('');
   const [tempPasswordDuration, setTempPasswordDuration] = useState(24);
   const [loading, setLoading] = useState(false);
-
   const fetchCoinKeys = async () => {
-    const { data, error } = await supabase
-      .from('coin_keys')
-      .select('*')
-      .order('created_at', { ascending: false });
-
+    const {
+      data,
+      error
+    } = await supabase.from('coin_keys').select('*').order('created_at', {
+      ascending: false
+    });
     if (error) {
       toast.error('Failed to fetch coin keys');
       return;
     }
-
     setCoinKeys(data || []);
   };
-
   const fetchTempPasswords = async () => {
-    const { data, error } = await supabase
-      .from('temp_passwords')
-      .select('*')
-      .order('created_at', { ascending: false });
-
+    const {
+      data,
+      error
+    } = await supabase.from('temp_passwords').select('*').order('created_at', {
+      ascending: false
+    });
     if (error) {
       toast.error('Failed to fetch temporary passwords');
       return;
     }
-
     setTempPasswords(data || []);
   };
-
   useEffect(() => {
     fetchCoinKeys();
     fetchTempPasswords();
   }, []);
-
   const generateRandomString = (length: number) => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
@@ -76,50 +68,40 @@ const AdminPanel = () => {
     }
     return result;
   };
-
   const createCoinKeys = async () => {
     setLoading(true);
-
     const keysToCreate = [];
     for (let i = 0; i < newKeyQuantity; i++) {
       keysToCreate.push({
         code: generateRandomString(12),
-        amount: newKeyAmount,
+        amount: newKeyAmount
       });
     }
-
-    const { error } = await supabase
-      .from('coin_keys')
-      .insert(keysToCreate);
-
+    const {
+      error
+    } = await supabase.from('coin_keys').insert(keysToCreate);
     if (error) {
       toast.error('Failed to create coin keys');
     } else {
       toast.success(`Created ${newKeyQuantity} coin key${newKeyQuantity > 1 ? 's' : ''}`);
       fetchCoinKeys();
     }
-
     setLoading(false);
   };
-
   const createTempPassword = async () => {
     if (!newTempPassword.trim()) {
       toast.error('Please enter a temporary password');
       return;
     }
-
     setLoading(true);
-
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + tempPasswordDuration);
-
-    const { error } = await supabase
-      .from('temp_passwords')
-      .insert({
-        password: newTempPassword,
-        expires_at: expiresAt.toISOString(),
-      });
-
+    const {
+      error
+    } = await supabase.from('temp_passwords').insert({
+      password: newTempPassword,
+      expires_at: expiresAt.toISOString()
+    });
     if (error) {
       toast.error('Failed to create temporary password');
     } else {
@@ -127,16 +109,12 @@ const AdminPanel = () => {
       setNewTempPassword('');
       fetchTempPasswords();
     }
-
     setLoading(false);
   };
-
   const deleteCoinKey = async (id: string) => {
-    const { error } = await supabase
-      .from('coin_keys')
-      .delete()
-      .eq('id', id);
-
+    const {
+      error
+    } = await supabase.from('coin_keys').delete().eq('id', id);
     if (error) {
       toast.error('Failed to delete coin key');
     } else {
@@ -144,14 +122,10 @@ const AdminPanel = () => {
       fetchCoinKeys();
     }
   };
-
   const deleteKeysByAmount = async (amount: number) => {
-    const { error } = await supabase
-      .from('coin_keys')
-      .delete()
-      .eq('amount', amount)
-      .eq('used', false);
-
+    const {
+      error
+    } = await supabase.from('coin_keys').delete().eq('amount', amount).eq('used', false);
     if (error) {
       toast.error('Failed to delete keys');
     } else {
@@ -159,10 +133,8 @@ const AdminPanel = () => {
       fetchCoinKeys();
     }
   };
-
   const exportKeysToTxt = (keyType: 'active' | 'used' | 'all') => {
     let keysToExport: CoinKey[] = [];
-    
     switch (keyType) {
       case 'active':
         keysToExport = coinKeys.filter(key => !key.used);
@@ -174,12 +146,10 @@ const AdminPanel = () => {
         keysToExport = coinKeys;
         break;
     }
-
-    const keysList = keysToExport
-      .map(key => `${key.code} - ${key.amount} coins`)
-      .join('\n');
-
-    const blob = new Blob([keysList], { type: 'text/plain' });
+    const keysList = keysToExport.map(key => `${key.code} - ${key.amount} coins`).join('\n');
+    const blob = new Blob([keysList], {
+      type: 'text/plain'
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -188,26 +158,17 @@ const AdminPanel = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-
     toast.success(`${keyType} keys exported to TXT file`);
   };
-
   const isExpired = (expiresAt: string) => {
     return new Date(expiresAt) < new Date();
   };
-
   const uniqueAmounts = [...new Set(coinKeys.map(key => key.amount))].sort((a, b) => a - b);
-
-  return (
-    <div className="min-h-screen bg-gray-900 text-white p-2 md:p-4 lg:p-8">
+  return <div className="min-h-screen bg-gray-900 text-white p-2 md:p-4 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-4 md:space-y-6">
         <div className="text-center">
           <div className="flex items-center justify-center space-x-2 md:space-x-3 mb-4">
-            <img 
-              src="/lovable-uploads/b02b29fd-4df8-4fd3-83d6-52e449f3c4ab.png" 
-              alt="GrainBet Logo" 
-              className="w-6 h-6 md:w-8 md:h-8 lg:w-10 lg:h-10"
-            />
+            <img alt="GrainBet Logo" className="w-6 h-6 md:w-8 md:h-8 lg:w-10 lg:h-10" src="/lovable-uploads/e851eb65-b0c8-4ed4-b058-57ef2201e65a.png" />
             <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-red-400 font-mono">Admin Panel</h1>
           </div>
           <p className="text-gray-300 font-mono text-xs md:text-sm lg:text-base">Manage coin keys and temporary access</p>
@@ -248,56 +209,27 @@ const AdminPanel = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs md:text-sm font-mono mb-2">Amount per key</label>
-                    <Input
-                      type="number"
-                      value={newKeyAmount}
-                      onChange={(e) => setNewKeyAmount(parseInt(e.target.value) || 100)}
-                      className="bg-gray-700 border-gray-600 text-white font-mono text-xs md:text-sm"
-                      min={1}
-                    />
+                    <Input type="number" value={newKeyAmount} onChange={e => setNewKeyAmount(parseInt(e.target.value) || 100)} className="bg-gray-700 border-gray-600 text-white font-mono text-xs md:text-sm" min={1} />
                   </div>
                   <div>
                     <label className="block text-xs md:text-sm font-mono mb-2">Quantity</label>
-                    <Input
-                      type="number"
-                      value={newKeyQuantity}
-                      onChange={(e) => setNewKeyQuantity(parseInt(e.target.value) || 1)}
-                      className="bg-gray-700 border-gray-600 text-white font-mono text-xs md:text-sm"
-                      min={1}
-                      max={50}
-                    />
+                    <Input type="number" value={newKeyQuantity} onChange={e => setNewKeyQuantity(parseInt(e.target.value) || 1)} className="bg-gray-700 border-gray-600 text-white font-mono text-xs md:text-sm" min={1} max={50} />
                   </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <Button
-                    onClick={createCoinKeys}
-                    disabled={loading}
-                    className="bg-green-600 hover:bg-green-700 font-mono flex-1 text-xs md:text-sm"
-                  >
+                  <Button onClick={createCoinKeys} disabled={loading} className="bg-green-600 hover:bg-green-700 font-mono flex-1 text-xs md:text-sm">
                     Create Keys
                   </Button>
-                  <Button
-                    onClick={() => exportKeysToTxt('active')}
-                    variant="outline"
-                    className="border-yellow-600 text-yellow-400 hover:bg-yellow-600 hover:text-black font-mono text-xs md:text-sm"
-                  >
+                  <Button onClick={() => exportKeysToTxt('active')} variant="outline" className="border-yellow-600 text-yellow-400 hover:bg-yellow-600 hover:text-black font-mono text-xs md:text-sm">
                     <Download className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                     Export Active
                   </Button>
-                  <Button
-                    onClick={() => exportKeysToTxt('used')}
-                    variant="outline"
-                    className="border-red-600 text-red-400 hover:bg-red-600 hover:text-white font-mono text-xs md:text-sm"
-                  >
+                  <Button onClick={() => exportKeysToTxt('used')} variant="outline" className="border-red-600 text-red-400 hover:bg-red-600 hover:text-white font-mono text-xs md:text-sm">
                     <Download className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                     Export Used
                   </Button>
-                  <Button
-                    onClick={() => exportKeysToTxt('all')}
-                    variant="outline"
-                    className="border-blue-600 text-blue-400 hover:bg-blue-600 hover:text-white font-mono text-xs md:text-sm"
-                  >
+                  <Button onClick={() => exportKeysToTxt('all')} variant="outline" className="border-blue-600 text-blue-400 hover:bg-blue-600 hover:text-white font-mono text-xs md:text-sm">
                     <Download className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                     Export All
                   </Button>
@@ -307,30 +239,14 @@ const AdminPanel = () => {
                 <div className="bg-gray-750 p-3 md:p-4 rounded-lg border border-gray-600">
                   <h4 className="text-sm md:text-base font-mono text-red-400 mb-2">Delete Keys by Amount</h4>
                   <div className="flex flex-wrap gap-2">
-                    {uniqueAmounts.map((amount) => (
-                      <Button
-                        key={amount}
-                        onClick={() => deleteKeysByAmount(amount)}
-                        variant="destructive"
-                        size="sm"
-                        className="font-mono text-xs"
-                      >
+                    {uniqueAmounts.map(amount => <Button key={amount} onClick={() => deleteKeysByAmount(amount)} variant="destructive" size="sm" className="font-mono text-xs">
                         Delete {amount} coin keys
-                      </Button>
-                    ))}
+                      </Button>)}
                   </div>
                 </div>
 
                 <div className="max-h-48 md:max-h-64 overflow-y-auto space-y-2">
-                  {coinKeys.map((key) => (
-                    <div
-                      key={key.id}
-                      className={`p-2 md:p-3 rounded border text-xs md:text-sm ${
-                        key.used
-                          ? 'bg-gray-700 border-gray-600 opacity-60'
-                          : 'bg-gray-750 border-gray-600'
-                      }`}
-                    >
+                  {coinKeys.map(key => <div key={key.id} className={`p-2 md:p-3 rounded border text-xs md:text-sm ${key.used ? 'bg-gray-700 border-gray-600 opacity-60' : 'bg-gray-750 border-gray-600'}`}>
                       <div className="flex justify-between items-start gap-2">
                         <div className="font-mono flex-1 min-w-0">
                           <div className="truncate text-xs md:text-sm">{key.code}</div>
@@ -339,19 +255,11 @@ const AdminPanel = () => {
                             {key.used ? `Used ${new Date(key.used_at!).toLocaleDateString()}` : 'Available'}
                           </div>
                         </div>
-                        {!key.used && (
-                          <Button
-                            onClick={() => deleteCoinKey(key.id)}
-                            size="sm"
-                            variant="ghost"
-                            className="text-red-400 hover:text-red-300 p-1"
-                          >
+                        {!key.used && <Button onClick={() => deleteCoinKey(key.id)} size="sm" variant="ghost" className="text-red-400 hover:text-red-300 p-1">
                             <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
-                          </Button>
-                        )}
+                          </Button>}
                       </div>
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
               </CardContent>
             </Card>
@@ -371,62 +279,30 @@ const AdminPanel = () => {
               <CardContent className="space-y-4">
                 <div>
                   <label className="block text-xs md:text-sm font-mono mb-2">New temporary password</label>
-                  <Input
-                    type="text"
-                    value={newTempPassword}
-                    onChange={(e) => setNewTempPassword(e.target.value)}
-                    placeholder="Enter temporary password"
-                    className="bg-gray-700 border-gray-600 text-white font-mono text-xs md:text-sm"
-                  />
+                  <Input type="text" value={newTempPassword} onChange={e => setNewTempPassword(e.target.value)} placeholder="Enter temporary password" className="bg-gray-700 border-gray-600 text-white font-mono text-xs md:text-sm" />
                 </div>
 
                 <div>
                   <label className="block text-xs md:text-sm font-mono mb-2">Duration (hours)</label>
-                  <Input
-                    type="number"
-                    value={tempPasswordDuration}
-                    onChange={(e) => setTempPasswordDuration(parseInt(e.target.value) || 24)}
-                    className="bg-gray-700 border-gray-600 text-white font-mono text-xs md:text-sm"
-                    min={1}
-                    max={168}
-                  />
+                  <Input type="number" value={tempPasswordDuration} onChange={e => setTempPasswordDuration(parseInt(e.target.value) || 24)} className="bg-gray-700 border-gray-600 text-white font-mono text-xs md:text-sm" min={1} max={168} />
                 </div>
 
-                <Button
-                  onClick={createTempPassword}
-                  disabled={loading || !newTempPassword.trim()}
-                  className="w-full bg-blue-600 hover:bg-blue-700 font-mono text-xs md:text-sm"
-                >
+                <Button onClick={createTempPassword} disabled={loading || !newTempPassword.trim()} className="w-full bg-blue-600 hover:bg-blue-700 font-mono text-xs md:text-sm">
                   Create Temporary Key
                 </Button>
 
                 <div className="max-h-48 md:max-h-64 overflow-y-auto space-y-2">
-                  {tempPasswords.map((temp) => (
-                    <div
-                      key={temp.id}
-                      className={`p-2 md:p-3 rounded border text-xs md:text-sm ${
-                        temp.used || isExpired(temp.expires_at)
-                          ? 'bg-gray-700 border-gray-600 opacity-60'
-                          : 'bg-gray-750 border-gray-600'
-                      }`}
-                    >
+                  {tempPasswords.map(temp => <div key={temp.id} className={`p-2 md:p-3 rounded border text-xs md:text-sm ${temp.used || isExpired(temp.expires_at) ? 'bg-gray-700 border-gray-600 opacity-60' : 'bg-gray-750 border-gray-600'}`}>
                       <div className="font-mono">
                         <div className="truncate font-medium text-xs md:text-sm">{temp.password}</div>
                         <div className="text-xs text-gray-400 mt-1">
                           Expires: {new Date(temp.expires_at).toLocaleString()}
                         </div>
                         <div className="text-xs">
-                          Status: {
-                            temp.used
-                              ? <span className="text-red-400">Used</span>
-                              : isExpired(temp.expires_at)
-                              ? <span className="text-orange-400">Expired</span>
-                              : <span className="text-green-400">Active</span>
-                          }
+                          Status: {temp.used ? <span className="text-red-400">Used</span> : isExpired(temp.expires_at) ? <span className="text-orange-400">Expired</span> : <span className="text-green-400">Active</span>}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
               </CardContent>
             </Card>
@@ -502,8 +378,6 @@ const AdminPanel = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default AdminPanel;
