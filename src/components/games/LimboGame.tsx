@@ -1,6 +1,8 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useGameHistory } from '@/hooks/useGameHistory';
 
 interface GameProps {
   balance: number;
@@ -14,6 +16,7 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
   const [isRolling, setIsRolling] = useState(false);
   const [lastWin, setLastWin] = useState<number | null>(null);
   const [animatedResult, setAnimatedResult] = useState<number>(0);
+  const { recordGame } = useGameHistory();
 
   const winChance = Math.min(99, Math.max(1, 99 / targetMultiplier));
 
@@ -73,12 +76,20 @@ export const LimboGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
 
         if (i === steps) {
           setResult(crashPoint);
-          if (crashPoint >= targetMultiplier) {
+          const isWin = crashPoint >= targetMultiplier;
+          let payout = 0;
+          
+          if (isWin) {
             const totalPayout = betAmount * targetMultiplier;
             const profit = totalPayout - betAmount;
             setLastWin(profit);
             onUpdateBalance(totalPayout);
+            payout = totalPayout;
           }
+
+          // Record the game in history
+          recordGame('limbo', betAmount, payout, isWin, isWin ? targetMultiplier : crashPoint);
+          
           setIsRolling(false);
         }
       }, i * stepDuration);

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -360,7 +359,7 @@ const Profile = () => {
 
                 <div className="p-4 bg-gray-750 rounded-lg">
                   <h4 className="font-mono text-yellow-400 mb-2">Current Profile</h4>
-                  <div className="text-sm space-y-1">
+                  <div className="text-sm space-y-1 text-white">
                     <div><strong>Username:</strong> {profile?.username}</div>
                     <div><strong>Email:</strong> {user.email}</div>
                     <div><strong>Member Since:</strong> {new Date(user.created_at).toLocaleDateString()}</div>
