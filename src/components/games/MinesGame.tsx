@@ -186,144 +186,200 @@ export const MinesGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => 
         isAnimating: false
       };
 
-      if (newGrid[row][col].isMine) {
-        setGameStatus('finished');
-        setGameResult('💥 BOOM! Game Over');
-        clearGameState();
-
-        // reveal all mines
-        for (let r = 0; r < 5; r++) {
-          for (let c = 0; c < 5; c++) {
-            if (newGrid[r][c].isMine && !newGrid[r][c].revealed) {
-              newGrid[r][c].revealed = true;
-            }
-          }
-        }
-
-        // lose betAmount already deducted
-        setProcessingCells(new Set());
-        return newGrid;
-      } else {
-        const newRevealedCount = revealedCount + 1;
-        setRevealedCount(newRevealedCount);
-
-        if (newRevealedCount === 25 - minesCount) {
-          setGameStatus('finished');
-          setGameResult(`🎉 YOU WIN! Multiplier: ${currentMultiplier.toFixed(4)}x`);
-          onUpdateBalance(betAmount * currentMultiplier);
-          clearGameState();
-          setProcessingCells(new Set());
-          return newGrid;
-        }
-      }
-
       return newGrid;
     });
 
-    setProcessingCells(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(cellKey);
-      return newSet;
-    });
-  }, [gameStatus, grid, revealedCount, currentMultiplier, minesCount, betAmount, onUpdateBalance, clearGameState]);
+    if (grid[row][col].isMine) {
+      // Reveal all mines with animation
+      for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 5; c++) {
+          if (grid[r][c].isMine && !(r === row && c === col)) {
+            await new Promise(resolve => setTimeout(resolve, 75));
+            setGrid(prevGrid => {
+              const newGrid = prevGrid.map(row => [...row]);
+              newGrid[r][c] = { ...newGrid[r][c], revealed: true };
+              return newGrid;
+            });
+          }
+        }
+      }
+      setGameResult('lost');
+      setGameStatus('finished');
+      clearGameState();
+    } else {
+      setRevealedCount(prev => prev + 1);
+      setProcessingCells(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(cellKey);
+        return newSet;
+      });
+    }
+  }, [gameStatus, grid, processingCells, clearGameState]);
 
-  const cashout = () => {
-    if (gameStatus !== 'playing') return;
+  const cashOut = () => {
+    const profit = betAmount * currentMultiplier;
+    onUpdateBalance(profit);
+    setGameResult('won');
     setGameStatus('finished');
-    setGameResult(`💰 Cashed out at ${currentMultiplier.toFixed(4)}x`);
-    onUpdateBalance(betAmount * currentMultiplier);
     clearGameState();
   };
 
-  // --- New code for history tracking start ---
-  const [gameHistory, setGameHistory] = useState<string[]>([]);
+  const pickRandomTile = () => {
+    if (gameStatus !== 'playing') return;
+    const unrevealedPositions: { row: number; col: number }[] = [];
 
-  useEffect(() => {
-    const storedHistory = localStorage.getItem('minesGameHistory');
-    if (storedHistory) {
-      setGameHistory(JSON.parse(storedHistory));
-    }
-  }, []);
-
-  useEffect(() => {
-    if (gameStatus === 'finished') {
-      const resultRecord = `${new Date().toLocaleString()} — Bet: ${betAmount}, Mines: ${minesCount}, Result: ${gameResult}, Multiplier: ${currentMultiplier.toFixed(4)}x`;
-      setGameHistory(prev => {
-        const newHistory = [resultRecord, ...prev].slice(0, 10);
-        localStorage.setItem('minesGameHistory', JSON.stringify(newHistory));
-        return newHistory;
+    grid.forEach((row, rowIndex) => {
+      row.forEach((cell, colIndex) => {
+        if (!cell.revealed) {
+          unrevealedPositions.push({ row: rowIndex, col: colIndex });
+        }
       });
-    }
-  }, [gameStatus]);
-  // --- New code for history tracking end ---
+    });
+
+    if (unrevealedPositions.length === 0) return;
+
+    const randomIndex = Math.floor(Math.random() * unrevealedPositions.length);
+    const { row, col } = unrevealedPositions[randomIndex];
+    revealTile(row, col);
+  };
 
   return (
-    <div className="mines-game p-4 bg-gray-800 rounded">
-      <div className="mb-4 flex gap-4">
-        <Input
-          type="number"
-          value={betAmount}
-          min={1}
-          max={balance}
-          onChange={e => setBetAmount(Number(e.target.value))}
-          disabled={gameStatus !== 'betting'}
-        />
-        <Input
-          type="number"
-          value={minesCount}
-          min={1}
-          max={24}
-          onChange={e => setMinesCount(Number(e.target.value))}
-          disabled={gameStatus !== 'betting'}
-        />
-        {gameStatus === 'betting' ? (
-          <Button onClick={startGame} disabled={betAmount > balance}>
-            Start Game
-          </Button>
-        ) : (
-          <Button onClick={cashout} disabled={gameStatus !== 'playing'}>
-            Cashout ({currentMultiplier.toFixed(4)}x)
-          </Button>
-        )}
-      </div>
-
-      <div className="grid grid-cols-5 gap-1 w-64">
-        {grid.map((row, rIdx) =>
-          row.map((cell, cIdx) => {
-            const key = `${rIdx}-${cIdx}`;
-            const baseClass = 'w-12 h-12 flex items-center justify-center cursor-pointer select-none text-xl font-bold rounded';
-            let cellClass = baseClass + ' bg-gray-600';
-            if (cell.revealed) {
-              cellClass = baseClass + (cell.isMine ? ' bg-red-600 text-white' : ' bg-green-600 text-white');
-            } else if (gameStatus !== 'playing') {
-              cellClass = baseClass + ' bg-gray-700';
-            }
-
-            return (
-              <div
-                key={key}
-                className={cn(cellClass, cell.isAnimating && 'animate-pulse')}
-                onClick={() => revealTile(rIdx, cIdx)}
-              >
-                {cell.revealed ? (cell.isMine ? '💣' : cell.hasGem ? '💎' : '') : ''}
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      <div className="mt-4 text-yellow-400 font-mono">{gameResult}</div>
-
-      {gameHistory.length > 0 && (
-        <div className="mt-6 p-4 bg-gray-700 rounded text-sm font-mono text-yellow-300 max-h-40 overflow-auto">
-          <h3 className="font-bold mb-2 text-lg">Recent Game History</h3>
-          <ul className="list-disc list-inside">
-            {gameHistory.map((entry, i) => (
-              <li key={i}>{entry}</li>
-            ))}
-          </ul>
+    <>
+      <div className="flex flex-col items-center justify-center gap-4 w-full">
+        <div className="flex gap-4 items-center">
+          <Input
+            type="number"
+            value={betAmount}
+            min={1}
+            max={balance}
+            disabled={gameStatus === 'playing'}
+            onChange={e => setBetAmount(Number(e.target.value))}
+            className="w-24"
+          />
+          <Input
+            type="number"
+            value={minesCount}
+            min={1}
+            max={24}
+            disabled={gameStatus === 'playing'}
+            onChange={e => setMinesCount(Number(e.target.value))}
+            className="w-24"
+          />
+          {gameStatus === 'betting' && (
+            <Button onClick={startGame} disabled={betAmount > balance}>
+              Start
+            </Button>
+          )}
+          {gameStatus === 'playing' && (
+            <>
+              <Button onClick={cashOut} disabled={gameResult === 'lost'}>
+                Cash Out {currentMultiplier.toFixed(3)}x
+              </Button>
+              <Button onClick={pickRandomTile}>Pick Random</Button>
+            </>
+          )}
+          {gameStatus === 'finished' && (
+            <Button
+              onClick={() => {
+                initializeEmptyGrid();
+                setGameStatus('betting');
+                setGameResult('');
+                setCurrentMultiplier(1);
+                setRevealedCount(0);
+              }}
+            >
+              New Game
+            </Button>
+          )}
         </div>
-      )}
+        <div className="grid grid-cols-5 gap-1">
+          {grid.map((row, rowIndex) =>
+            row.map((cell, colIndex) => {
+              const isRevealed = cell.revealed;
+              const isMine = cell.isMine;
+              const isAnimating = cell.isAnimating;
+              return (
+                <button
+                  key={`${rowIndex}-${colIndex}`}
+                  className={cn(
+                    'w-12 h-12 border border-gray-600 flex items-center justify-center text-lg font-bold select-none',
+                    isRevealed && isMine && 'bg-red-600 text-white',
+                    isRevealed && !isMine && 'bg-green-600 text-white',
+                    !isRevealed && 'bg-gray-900 hover:bg-gray-700',
+                    isAnimating && 'animate-pulse'
+                  )}
+                  disabled={isRevealed || gameStatus !== 'playing'}
+                  onClick={() => revealTile(rowIndex, colIndex)}
+                >
+                  {isRevealed && isMine ? '💣' : isRevealed && cell.hasGem ? '💎' : ''}
+                </button>
+              );
+            })
+          )}
+        </div>
+        <div>
+          <p>Balance: {balance.toFixed(2)}</p>
+          <p>Current Multiplier: {currentMultiplier.toFixed(3)}x</p>
+          <p>Revealed Gems: {revealedCount}</p>
+          {gameResult === 'won' && <p className="text-green-500">You won!</p>}
+          {gameResult === 'lost' && <p className="text-red-500">You lost!</p>}
+        </div>
+      </div>
+
+      {/* RECENT HISTORY SECTION */}
+      <RecentHistory betAmount={betAmount} minesCount={minesCount} multiplier={currentMultiplier} gameResult={gameResult} />
+    </>
+  );
+};
+
+interface RecentHistoryProps {
+  betAmount: number;
+  minesCount: number;
+  multiplier: number;
+  gameResult: string;
+}
+
+const RecentHistory: React.FC<RecentHistoryProps> = ({ betAmount, minesCount, multiplier, gameResult }) => {
+  const [history, setHistory] = useState<
+    { betAmount: number; minesCount: number; multiplier: number; gameResult: string; date: string }[]
+  >(() => {
+    const saved = localStorage.getItem('mines_game_history');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    if (gameResult === 'won' || gameResult === 'lost') {
+      const newEntry = {
+        betAmount,
+        minesCount,
+        multiplier,
+        gameResult,
+        date: new Date().toLocaleString()
+      };
+      const updatedHistory = [newEntry, ...history].slice(0, 10);
+      setHistory(updatedHistory);
+      localStorage.setItem('mines_game_history', JSON.stringify(updatedHistory));
+    }
+  }, [gameResult]);
+
+  if (history.length === 0) return null;
+
+  return (
+    <div className="mt-6 w-full max-w-md mx-auto">
+      <h3 className="text-lg font-semibold mb-2">Recent Game History</h3>
+      <ul className="space-y-1 max-h-64 overflow-auto border rounded p-2 bg-gray-800 text-white text-sm">
+        {history.map((entry, idx) => (
+          <li key={idx} className="flex justify-between border-b border-gray-700 pb-1">
+            <div>
+              <span className="font-bold">${entry.betAmount}</span> | Mines: {entry.minesCount} |{' '}
+              <span>{entry.multiplier.toFixed(3)}x</span>
+            </div>
+            <div className={entry.gameResult === 'won' ? 'text-green-400' : 'text-red-400'}>
+              {entry.gameResult.toUpperCase()}
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };
