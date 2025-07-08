@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -97,7 +96,7 @@ export const KenoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
       setGameResult(`💔 ${matchCount} matches. Better luck next time!`);
     }
 
-    // Record the game in history
+    // Record the game in history exactly like dice
     await recordGame('keno', betAmount, payout, isWin, isWin ? multiplier : undefined);
     
     setGameStatus('finished');
