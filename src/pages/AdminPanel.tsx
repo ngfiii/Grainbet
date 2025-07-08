@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,9 +33,7 @@ const AdminPanel = () => {
   const [keyAmount, setKeyAmount] = useState<number>(100);
   const [keyCount, setKeyCount] = useState<number>(1);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
-  const [balanceAmount, setBal
-
-anceAmount] = useState<number>(0);
+  const [balanceAmount, setBalanceAmount] = useState<number>(0);
 
   useEffect(() => {
     fetchUserProfiles();
