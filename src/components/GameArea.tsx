@@ -26,7 +26,7 @@ export const GameArea: React.FC<GameAreaProps> = ({
     
     switch (currentGame) {
       case 'dashboard': return <DashboardGame {...gameProps} onGameSelect={onGameSelect} />;
-      case 'dice': return <DiceGame />;
+      case 'dice': return <DiceGame {...gameProps} />;
       case 'limbo': return <LimboGame {...gameProps} />;
       case 'blackjack': return <BlackjackGame {...gameProps} />;
       case 'mines': return <MinesGame {...gameProps} />;
