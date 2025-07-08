@@ -245,6 +245,46 @@ export type Database = {
       }
     }
     Functions: {
+      admin_bulk_update_balance: {
+        Args: { target_balance: number; user_filter?: string }
+        Returns: number
+      }
+      admin_clear_game_history: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      admin_create_fake_users: {
+        Args: { user_count?: number }
+        Returns: number
+      }
+      admin_delete_all_users: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      admin_give_coins_to_all: {
+        Args: { coin_amount: number }
+        Returns: number
+      }
+      admin_multiply_all_balances: {
+        Args: { multiplier: number }
+        Returns: number
+      }
+      admin_nuclear_reset: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      admin_randomize_all_balances: {
+        Args: { min_balance?: number; max_balance?: number }
+        Returns: number
+      }
+      admin_reset_all_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      admin_set_all_balances: {
+        Args: { target_balance: number }
+        Returns: number
+      }
       update_user_stats: {
         Args: {
           p_user_id: string

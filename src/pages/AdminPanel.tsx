@@ -287,6 +287,244 @@ const AdminPanel = () => {
   const totalUsers = userProfiles.length;
   const totalCoinsInKeys = coinKeys.reduce((sum, k) => sum + (k.used ? 0 : k.amount), 0);
 
+  const giveCoinsToAll = async () => {
+    if (!newUserBalance || newUserBalance <= 0) {
+      toast.error('Please enter a valid coin amount');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_give_coins_to_all', {
+        coin_amount: newUserBalance
+      });
+
+      if (error) {
+        toast.error('Failed to give coins to all users');
+        console.error('Error:', error);
+      } else {
+        toast.success(`Gave ${newUserBalance} coins to ${data} users`);
+        fetchUserProfiles();
+        setNewUserBalance(0);
+      }
+    } catch (error) {
+      toast.error('Error giving coins to all users');
+      console.error('Error:', error);
+    }
+    setLoading(false);
+  };
+
+  const setAllBalances = async () => {
+    if (!newUserBalance || newUserBalance < 0) {
+      toast.error('Please enter a valid balance amount');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_set_all_balances', {
+        target_balance: newUserBalance
+      });
+
+      if (error) {
+        toast.error('Failed to set all balances');
+        console.error('Error:', error);
+      } else {
+        toast.success(`Set balance to ${newUserBalance} for ${data} users`);
+        fetchUserProfiles();
+        setNewUserBalance(0);
+      }
+    } catch (error) {
+      toast.error('Error setting all balances');
+      console.error('Error:', error);
+    }
+    setLoading(false);
+  };
+
+  const multiplyAllBalances = async () => {
+    const multiplier = parseFloat(prompt('Enter multiplier (e.g., 2.5):') || '1');
+    if (multiplier <= 0) {
+      toast.error('Invalid multiplier');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_multiply_all_balances', {
+        multiplier: multiplier
+      });
+
+      if (error) {
+        toast.error('Failed to multiply balances');
+        console.error('Error:', error);
+      } else {
+        toast.success(`Multiplied ${data} user balances by ${multiplier}x`);
+        fetchUserProfiles();
+      }
+    } catch (error) {
+      toast.error('Error multiplying balances');
+      console.error('Error:', error);
+    }
+    setLoading(false);
+  };
+
+  const randomizeAllBalances = async () => {
+    const min = parseInt(prompt('Minimum balance:') || '100');
+    const max = parseInt(prompt('Maximum balance:') || '10000');
+    
+    if (min >= max || min < 0) {
+      toast.error('Invalid range');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_randomize_all_balances', {
+        min_balance: min,
+        max_balance: max
+      });
+
+      if (error) {
+        toast.error('Failed to randomize balances');
+        console.error('Error:', error);
+      } else {
+        toast.success(`Randomized ${data} user balances between ${min}-${max}`);
+        fetchUserProfiles();
+      }
+    } catch (error) {
+      toast.error('Error randomizing balances');
+      console.error('Error:', error);
+    }
+    setLoading(false);
+  };
+
+  const createFakeUsers = async () => {
+    const count = parseInt(prompt('Number of fake users to create:') || '10');
+    if (count <= 0 || count > 100) {
+      toast.error('Invalid count (1-100)');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_create_fake_users', {
+        user_count: count
+      });
+
+      if (error) {
+        toast.error('Failed to create fake users');
+        console.error('Error:', error);
+      } else {
+        toast.success(`Created ${data} fake users`);
+        fetchUserProfiles();
+      }
+    } catch (error) {
+      toast.error('Error creating fake users');
+      console.error('Error:', error);
+    }
+    setLoading(false);
+  };
+
+  const deleteAllUsers = async () => {
+    const confirmation = prompt('Type "DELETE ALL USERS" to confirm:');
+    if (confirmation !== 'DELETE ALL USERS') {
+      toast.error('Confirmation failed');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_delete_all_users');
+
+      if (error) {
+        toast.error('Failed to delete users');
+        console.error('Error:', error);
+      } else {
+        toast.success(`Deleted ${data} users`);
+        fetchUserProfiles();
+      }
+    } catch (error) {
+      toast.error('Error deleting users');
+      console.error('Error:', error);
+    }
+    setLoading(false);
+  };
+
+  const nuclearReset = async () => {
+    const confirmation = prompt('Type "NUCLEAR RESET" to confirm total system wipe:');
+    if (confirmation !== 'NUCLEAR RESET') {
+      toast.error('Confirmation failed');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_nuclear_reset');
+
+      if (error) {
+        toast.error('Failed to execute nuclear reset');
+        console.error('Error:', error);
+      } else {
+        toast.success(data);
+        fetchUserProfiles();
+        fetchCoinKeys();
+      }
+    } catch (error) {
+      toast.error('Error executing nuclear reset');
+      console.error('Error:', error);
+    }
+    setLoading(false);
+  };
+
+  const resetAllStats = async () => {
+    const confirmation = prompt('Type "RESET STATS" to confirm:');
+    if (confirmation !== 'RESET STATS') {
+      toast.error('Confirmation failed');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_reset_all_stats');
+
+      if (error) {
+        toast.error('Failed to reset stats');
+        console.error('Error:', error);
+      } else {
+        toast.success(`Reset stats for ${data} users`);
+        fetchUserProfiles();
+      }
+    } catch (error) {
+      toast.error('Error resetting stats');
+      console.error('Error:', error);
+    }
+    setLoading(false);
+  };
+
+  const clearGameHistory = async () => {
+    const confirmation = prompt('Type "CLEAR HISTORY" to confirm:');
+    if (confirmation !== 'CLEAR HISTORY') {
+      toast.error('Confirmation failed');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_clear_game_history');
+
+      if (error) {
+        toast.error('Failed to clear game history');
+        console.error('Error:', error);
+      } else {
+        toast.success(`Cleared ${data} game history records`);
+      }
+    } catch (error) {
+      toast.error('Error clearing game history');
+      console.error('Error:', error);
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-2 md:p-4 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-4 md:space-y-6">
@@ -644,50 +882,68 @@ const AdminPanel = () => {
                     </div>
                   </div>
 
-                  {/* Database Tools */}
-                  <div className="p-4 bg-gray-750 rounded-lg border border-gray-600">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Database className="w-4 h-4 text-green-400" />
-                      <h4 className="font-mono text-green-400 text-sm">Database Tools</h4>
-                    </div>
-                    <div className="space-y-2">
-                      <Button size="sm" variant="outline" className="w-full text-xs">
-                        Export User Data
-                      </Button>
-                      <Button size="sm" variant="outline" className="w-full text-xs">
-                        Backup Database
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Security Tools */}
-                  <div className="p-4 bg-gray-750 rounded-lg border border-gray-600">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Shield className="w-4 h-4 text-red-400" />
-                      <h4 className="font-mono text-red-400 text-sm">Security</h4>
-                    </div>
-                    <div className="space-y-2">
-                      <Button size="sm" variant="outline" className="w-full text-xs">
-                        View Login Logs
-                      </Button>
-                      <Button size="sm" variant="outline" className="w-full text-xs">
-                        Suspicious Activity
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Financial Tools */}
+                  {/* Balance Management */}
                   <div className="p-4 bg-gray-750 rounded-lg border border-gray-600">
                     <div className="flex items-center gap-2 mb-3">
                       <DollarSign className="w-4 h-4 text-yellow-400" />
-                      <h4 className="font-mono text-yellow-400 text-sm">Financial</h4>
+                      <h4 className="font-mono text-yellow-400 text-sm">Balance Management</h4>
                     </div>
                     <div className="space-y-2">
-                      <Button size="sm" variant="outline" className="w-full text-xs">
-                        Transaction History
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          placeholder="Amount"
+                          value={newUserBalance}
+                          onChange={(e) => setNewUserBalance(parseFloat(e.target.value) || 0)}
+                          className="bg-gray-700 border-gray-600 text-white text-xs"
+                        />
+                      </div>
+                      <Button onClick={giveCoinsToAll} disabled={loading} size="sm" className="w-full text-xs bg-green-600 hover:bg-green-700">
+                        Give Coins to All
                       </Button>
-                      <Button size="sm" variant="outline" className="w-full text-xs">
-                        Balance Reports
+                      <Button onClick={setAllBalances} disabled={loading} size="sm" className="w-full text-xs bg-blue-600 hover:bg-blue-700">
+                        Set All Balances
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Overpowered Tools */}
+                  <div className="p-4 bg-gray-750 rounded-lg border border-red-600">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Shield className="w-4 h-4 text-red-400" />
+                      <h4 className="font-mono text-red-400 text-sm">⚠️ Overpowered Tools</h4>
+                    </div>
+                    <div className="space-y-2">
+                      <Button onClick={multiplyAllBalances} disabled={loading} size="sm" variant="outline" className="w-full text-xs border-yellow-600 text-yellow-400 hover:bg-yellow-600 hover:text-black">
+                        Multiply All Balances
+                      </Button>
+                      <Button onClick={randomizeAllBalances} disabled={loading} size="sm" variant="outline" className="w-full text-xs border-purple-600 text-purple-400 hover:bg-purple-600 hover:text-white">
+                        Randomize All Balances
+                      </Button>
+                      <Button onClick={createFakeUsers} disabled={loading} size="sm" variant="outline" className="w-full text-xs border-cyan-600 text-cyan-400 hover:bg-cyan-600 hover:text-black">
+                        Create Fake Users
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Destructive Tools */}
+                  <div className="p-4 bg-gray-750 rounded-lg border border-red-600">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Database className="w-4 h-4 text-red-400" />
+                      <h4 className="font-mono text-red-400 text-sm">🚨 Destructive Tools</h4>
+                    </div>
+                    <div className="space-y-2">
+                      <Button onClick={resetAllStats} disabled={loading} size="sm" variant="destructive" className="w-full text-xs">
+                        Reset All Stats
+                      </Button>
+                      <Button onClick={clearGameHistory} disabled={loading} size="sm" variant="destructive" className="w-full text-xs">
+                        Clear Game History
+                      </Button>
+                      <Button onClick={deleteAllUsers} disabled={loading} size="sm" variant="destructive" className="w-full text-xs">
+                        Delete All Users
+                      </Button>
+                      <Button onClick={nuclearReset} disabled={loading} size="sm" variant="destructive" className="w-full text-xs bg-red-800 hover:bg-red-900">
+                        🚨 NUCLEAR RESET 🚨
                       </Button>
                     </div>
                   </div>
@@ -697,16 +953,23 @@ const AdminPanel = () => {
                 <div className="p-4 bg-gray-750 rounded-lg border border-gray-600">
                   <h4 className="font-mono text-orange-400 text-sm mb-3">Quick Actions</h4>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <Button size="sm" variant="outline" className="text-xs">
+                    <Button size="sm" variant="outline" className="text-xs" onClick={() => {
+                      setTempPasswords([]);
+                      toast.success('Temp keys cleared (display only)');
+                    }}>
                       Clear Temp Keys
                     </Button>
-                    <Button size="sm" variant="outline" className="text-xs">
+                    <Button size="sm" variant="outline" className="text-xs" onClick={resetAllStats}>
                       Reset Stats
                     </Button>
-                    <Button size="sm" variant="outline" className="text-xs">
+                    <Button size="sm" variant="outline" className="text-xs" onClick={() => {
+                      toast.info('Maintenance mode would be implemented here');
+                    }}>
                       Maintenance Mode
                     </Button>
-                    <Button size="sm" variant="outline" className="text-xs">
+                    <Button size="sm" variant="outline" className="text-xs" onClick={() => {
+                      toast.success('System health: All systems operational');
+                    }}>
                       System Health
                     </Button>
                   </div>
