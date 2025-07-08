@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,7 +31,7 @@ interface UserStats {
 }
 
 const Profile = () => {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const { balance } = useBalance();
   const [username, setUsername] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -374,7 +375,7 @@ const Profile = () => {
 
                 <div className="pt-4 border-t border-gray-600">
                   <Button 
-                    onClick={logout}
+                    onClick={signOut}
                     variant="destructive"
                     className="w-full"
                   >
