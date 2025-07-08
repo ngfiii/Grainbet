@@ -1,7 +1,7 @@
 
 import type { Game } from '@/pages/Index';
 import DashboardGame from '@/components/games/DashboardGame';
-import DiceGame from '@/components/games/DiceGame';
+import { DiceGame } from '@/components/games/DiceGame';
 import { LimboGame } from '@/components/games/LimboGame';
 import { BlackjackGame } from '@/components/games/BlackjackGame';
 import { MinesGame } from '@/components/games/MinesGame';

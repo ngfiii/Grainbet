@@ -1,182 +1,241 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from 'sonner';
-import { useGameHistory } from '@/hooks/useGameHistory';
+import { Slider } from '@/components/ui/slider';
 
-interface DiceGameProps {
+interface GameProps {
   balance: number;
   onUpdateBalance: (amount: number) => void;
 }
 
-const DiceGame: React.FC<DiceGameProps> = ({ balance, onUpdateBalance }) => {
+export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
   const [betAmount, setBetAmount] = useState(10);
-  const [prediction, setPrediction] = useState<'over' | 'under'>('over');
-  const [target, setTarget] = useState(50);
+  const [target, setTarget] = useState([50]);
+  const [isOver, setIsOver] = useState(true);
+  const [result, setResult] = useState<number | null>(null);
   const [isRolling, setIsRolling] = useState(false);
-  const [lastRoll, setLastRoll] = useState<number | null>(null);
-  const [lastResult, setLastResult] = useState<'win' | 'loss' | null>(null);
-  const { recordGameResult } = useGameHistory();
+  const [lastWin, setLastWin] = useState<number | null>(null);
 
   const calculateMultiplier = () => {
-    if (prediction === 'over') {
-      return (99 / (99 - target));
+    const targetNum = target[0];
+    const houseEdge = 0.01; // 1% house edge
+    
+    let probability;
+    if (isOver) {
+      probability = (100 - targetNum) / 100;
     } else {
-      return (99 / target);
+      probability = targetNum / 100;
     }
+    
+    return (1 / probability) * (1 - houseEdge);
   };
 
-  const rollDice = async () => {
-    if (betAmount > balance) {
-      toast.error('Insufficient balance');
+  const roll = async () => {
+    if (betAmount < 10) {
       return;
     }
-
-    if (betAmount <= 0) {
-      toast.error('Bet amount must be greater than 0');
-      return;
-    }
-
-    setIsRolling(true);
+    if (betAmount > balance) return;
     
-    // Deduct bet amount
+    setIsRolling(true);
+    setLastWin(null);
+    
+    // Deduct bet
     onUpdateBalance(-betAmount);
-
-    // Simulate rolling animation
-    setTimeout(async () => {
-      const roll = Math.floor(Math.random() * 100) + 1;
-      setLastRoll(roll);
-
-      let isWin = false;
-      if (prediction === 'over' && roll > target) {
-        isWin = true;
-      } else if (prediction === 'under' && roll < target) {
-        isWin = true;
-      }
-
+    
+    // Animation
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    const rollResult = Math.random() * 100;
+    setResult(rollResult);
+    
+    const won = isOver ? rollResult > target[0] : rollResult < target[0];
+    
+    if (won) {
       const multiplier = calculateMultiplier();
-      let payout = 0;
+      const profit = betAmount * (multiplier - 1); // Only the profit part
+      setLastWin(profit);
+      onUpdateBalance(profit); // Only add the profit, don't return the original bet
+    }
+    
+    setIsRolling(false);
+  };
 
-      if (isWin) {
-        payout = betAmount * multiplier;
-        onUpdateBalance(payout);
-        setLastResult('win');
-        toast.success(`You won ${payout.toFixed(2)} coins!`);
-      } else {
-        setLastResult('loss');
-        toast.error('You lost!');
-      }
+  const getResultColor = () => {
+    if (result === null) return 'bg-yellow-400';
+    const won = isOver ? result > target[0] : result < target[0];
+    return won ? 'bg-green-400' : 'bg-red-400';
+  };
 
-      // Record the game result
-      await recordGameResult('dice', betAmount, isWin, payout, multiplier);
-
-      setIsRolling(false);
-    }, 2000);
+  const getDisplayNumber = () => {
+    return result !== null ? result : target[0];
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-6">
-      <Card className="bg-gray-800 border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-center text-2xl font-bold text-yellow-400 font-mono">
-            🎲 Dice Game
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Dice Display */}
-          <div className="text-center">
-            <div className="inline-block p-8 bg-gray-700 rounded-lg border-2 border-gray-600">
-              {isRolling ? (
-                <div className="text-6xl animate-spin">🎲</div>
-              ) : (
-                <div className="text-6xl font-bold text-white font-mono">
-                  {lastRoll || '?'}
-                </div>
-              )}
+    <div className="max-w-2xl mx-auto">
+      <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-2xl">
+        <h2 className="text-3xl font-bold text-yellow-400 mb-6 text-center font-mono">🎮 Dice</h2>
+        
+        {/* Bet Amount - Moved to top */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium mb-2 font-mono">Bet Amount (min: 10)</label>
+          <Input
+            type="number"
+            value={betAmount}
+            onChange={(e) => setBetAmount(Math.max(10, parseInt(e.target.value) || 10))}
+            className="bg-gray-700 border-gray-600 text-white transition-all duration-200 focus:ring-2 focus:ring-yellow-400 font-mono"
+            min={10}
+          />
+        </div>
+
+        {/* Hexagon Indicator with connecting line */}
+        <div className="mb-8 relative">
+          <div className="h-24 relative">
+            {/* Faded Connecting Line */}
+            <div 
+              className="absolute top-16 w-0.5 h-8 bg-gray-400/20 transition-all duration-150 ease-out"
+              style={{ 
+                left: `${result !== null ? result : target[0]}%`,
+                transform: 'translateX(-50%)'
+              }}
+            />
+            
+            {/* Proper 6-sided Hexagon */}
+            <div 
+              className={`absolute top-0 w-12 h-12 flex items-center justify-center shadow-lg transition-all duration-150 ease-out ${
+                result === null ? 'bg-yellow-400' : 
+                (isOver ? result > target[0] : result < target[0]) ? 'bg-green-400' : 'bg-red-400'
+              }`}
+              style={{ 
+                left: `${result !== null ? result : target[0]}%`,
+                transform: 'translateX(-50%)',
+                clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)'
+              }}
+            >
+              <span className="text-sm font-bold text-black font-mono">
+                {(result !== null ? result : target[0]).toFixed(1)}
+              </span>
             </div>
-            {lastResult && (
-              <div className={`mt-2 text-lg font-bold ${
-                lastResult === 'win' ? 'text-green-400' : 'text-red-400'
+          </div>
+        </div>
+
+        {/* Enhanced Slider with better spacing */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium mb-4 font-mono">
+            Target: {target[0].toFixed(1)}
+          </label>
+          
+          <div className="relative mb-8">
+            <div className="bg-gray-700/80 h-20 rounded-lg relative overflow-hidden border border-gray-600">
+              {/* Gradient Background */}
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 opacity-30"></div>
+              
+              {/* Target Range Visualization */}
+              <div 
+                className={`absolute top-0 h-full transition-all duration-200 ${
+                  isOver ? 'bg-green-500/40' : 'bg-red-500/40'
+                } border-l-2 border-r-2 ${
+                  isOver ? 'border-green-400' : 'border-red-400'
+                }`}
+                style={{
+                  left: isOver ? `${target[0]}%` : '0%',
+                  width: isOver ? `${100 - target[0]}%` : `${target[0]}%`
+                }}
+              />
+              
+              {/* Target Line */}
+              <div 
+                className="absolute top-0 w-1 h-full bg-yellow-400 shadow-lg transition-all duration-200"
+                style={{ left: `${target[0]}%` }}
+              />
+              
+              {/* More number markers for better spacing */}
+              <div className="absolute bottom-2 left-2 text-xs text-white font-mono font-bold">0</div>
+              <div className="absolute bottom-2 left-[12.5%] transform -translate-x-1/2 text-xs text-white font-mono font-bold">12.5</div>
+              <div className="absolute bottom-2 left-1/4 transform -translate-x-1/2 text-xs text-white font-mono font-bold">25</div>
+              <div className="absolute bottom-2 left-[37.5%] transform -translate-x-1/2 text-xs text-white font-mono font-bold">37.5</div>
+              <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-xs text-white font-mono font-bold">50</div>
+              <div className="absolute bottom-2 left-[62.5%] transform -translate-x-1/2 text-xs text-white font-mono font-bold">62.5</div>
+              <div className="absolute bottom-2 left-3/4 transform -translate-x-1/2 text-xs text-white font-mono font-bold">75</div>
+              <div className="absolute bottom-2 left-[87.5%] transform -translate-x-1/2 text-xs text-white font-bold">87.5</div>
+              <div className="absolute bottom-2 right-2 text-xs text-white font-mono font-bold">100</div>
+            </div>
+            
+            <div className="mt-6">
+              <Slider
+                value={target}
+                onValueChange={setTarget}
+                max={99}
+                min={1}
+                step={0.1}
+                className="slider-enhanced cursor-pointer"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Over/Under Toggle */}
+        <div className="mb-6 flex gap-2">
+          <Button
+            onClick={() => setIsOver(false)}
+            variant={!isOver ? "default" : "outline"}
+            className={`flex-1 transition-all duration-200 font-mono ${
+              !isOver ? 'bg-red-500 hover:bg-red-600 text-black font-bold' : 'hover:bg-gray-700'
+            }`}
+          >
+            <span className="text-black">Under {target[0].toFixed(1)}</span>
+          </Button>
+          <Button
+            onClick={() => setIsOver(true)}  
+            variant={isOver ? "default" : "outline"}
+            className={`flex-1 transition-all duration-200 font-mono ${
+              isOver ? 'bg-green-500 hover:bg-green-600 text-black font-bold' : 'hover:bg-gray-700'
+            }`}
+          >
+            <span className="text-black">Over {target[0].toFixed(1)}</span>
+          </Button>
+        </div>
+
+        {/* Multiplier Display */}
+        <div className="mb-6 text-center bg-gray-700/50 p-4 rounded-lg border border-gray-600">
+          <div className="text-2xl font-bold text-green-400 mb-1 font-mono">
+            {calculateMultiplier().toFixed(2)}x multiplier
+          </div>
+          <div className="text-gray-400 font-mono">
+            Potential profit: {(betAmount * (calculateMultiplier() - 1)).toFixed(0)} coins
+          </div>
+        </div>
+
+        {/* Roll Result */}
+        {(result !== null || isRolling) && (
+          <div className="mb-6 text-center animate-fade-in">
+            <div className="text-6xl font-bold mb-2 transition-all duration-500 font-mono">
+              {isRolling ? '🎲' : result!.toFixed(1)}
+            </div>
+            {!isRolling && result !== null && (
+              <div className={`text-xl font-bold transition-all duration-300 font-mono ${
+                (isOver ? result > target[0] : result < target[0]) 
+                  ? 'text-green-400 animate-pulse' : 'text-red-400'
               }`}>
-                {lastResult === 'win' ? '🎉 WIN!' : '💀 LOSS!'}
+                {(isOver ? result > target[0] : result < target[0]) ? '🎉 WIN!' : '💔 LOSE'}
+              </div>
+            )}
+            {lastWin && lastWin > 0 && (
+              <div className="text-lg text-green-400 animate-bounce font-mono">
+                +{lastWin.toFixed(0)} coins profit
               </div>
             )}
           </div>
+        )}
 
-          {/* Game Controls */}
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Bet Amount
-                </label>
-                <Input
-                  type="number"
-                  value={betAmount}
-                  onChange={(e) => setBetAmount(Number(e.target.value))}
-                  min="1"
-                  max={balance}
-                  className="bg-gray-700 border-gray-600 text-white font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Target Number
-                </label>
-                <Input
-                  type="number"
-                  value={target}
-                  onChange={(e) => setTarget(Number(e.target.value))}
-                  min="1"
-                  max="98"
-                  className="bg-gray-700 border-gray-600 text-white font-mono"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Prediction
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  onClick={() => setPrediction('over')}
-                  variant={prediction === 'over' ? 'default' : 'outline'}
-                  className={prediction === 'over' ? 'bg-green-600 hover:bg-green-700' : ''}
-                >
-                  Over {target}
-                </Button>
-                <Button
-                  onClick={() => setPrediction('under')}
-                  variant={prediction === 'under' ? 'default' : 'outline'}
-                  className={prediction === 'under' ? 'bg-blue-600 hover:bg-blue-700' : ''}
-                >
-                  Under {target}
-                </Button>
-              </div>
-            </div>
-
-            <div className="text-center p-3 bg-gray-700 rounded-lg">
-              <div className="text-sm text-gray-300">Multiplier</div>
-              <div className="text-xl font-bold text-yellow-400 font-mono">
-                {calculateMultiplier().toFixed(2)}x
-              </div>
-            </div>
-
-            <Button
-              onClick={rollDice}
-              disabled={isRolling || betAmount > balance}
-              className="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-bold py-3 text-lg"
-            >
-              {isRolling ? 'Rolling...' : 'Roll Dice'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Roll Button */}
+        <Button
+          onClick={roll}
+          disabled={betAmount > balance || isRolling || betAmount < 10}
+          className="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-bold py-3 transition-all duration-200 hover:scale-105 disabled:opacity-50 font-mono"
+        >
+          {isRolling ? 'Rolling...' : `Roll Dice (${betAmount} coins)`}
+        </Button>
+      </div>
     </div>
   );
 };
-
-export default DiceGame;
