@@ -1,3 +1,4 @@
+
 import { Construction } from 'lucide-react';
 
 interface GameProps {
