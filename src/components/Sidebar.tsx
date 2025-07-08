@@ -65,7 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <img alt="GrainBet Logo" className="w-6 h-6 md:w-8 md:h-8" src="/lovable-uploads/7a107056-70c7-4f03-8ff9-d82acd01cc80.png" />
             <h1 className="text-lg md:text-xl font-bold text-yellow-400 font-mono">GrainBet</h1>
           </div>}
-        {collapsed && <img alt="GrainBet Logo" className="w-6 h-6 mx-auto" src="/lovable-uploads/b02b29fd-4df8-4fd3-83d6-52e449f3c4ab.png" />}
+        {collapsed && <img alt="GrainBet Logo" className="w-6 h-6 mx-auto" src="/lovable-uploads/3a17ccbe-47d7-44fc-b74f-f28d33583b84.png" />}
         <Button onClick={onToggle} variant="ghost" size="sm" className="text-gray-400 hover:text-white hover:bg-gray-700 flex-shrink-0 p-1 md:p-2">
           {collapsed ? '→' : '←'}
         </Button>
