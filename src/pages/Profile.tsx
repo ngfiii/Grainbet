@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -78,7 +77,7 @@ const Profile = () => {
       .from('user_stats')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching user stats:', error);
@@ -96,7 +95,7 @@ const Profile = () => {
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(50);
 
     if (error) {
       console.error('Error fetching game history:', error);
@@ -181,7 +180,6 @@ const Profile = () => {
           <p className="text-gray-300 font-mono">Manage your account and view your gaming statistics</p>
         </div>
 
-        {/* Profile Overview */}
         <Card className="bg-gray-800 border-gray-700">
           <CardHeader>
             <CardTitle className="text-yellow-400 font-mono flex items-center gap-2">
@@ -280,7 +278,7 @@ const Profile = () => {
             <Card className="bg-gray-800 border-gray-700">
               <CardHeader>
                 <CardTitle className="text-blue-400 font-mono">Recent Games</CardTitle>
-                <CardDescription>Your last 20 games played</CardDescription>
+                <CardDescription>Your complete game history</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -303,8 +301,8 @@ const Profile = () => {
                               </span>
                             </div>
                             <div className="text-sm text-gray-400 mt-1">
-                              Bet: {game.bet_amount} • Payout: {game.payout}
-                              {game.multiplier && ` • ${game.multiplier}x`}
+                              Bet: {game.bet_amount} • Payout: {game.payout.toFixed(2)}
+                              {game.multiplier && ` • ${game.multiplier.toFixed(2)}x`}
                             </div>
                           </div>
                           <div className="text-right">
@@ -339,7 +337,7 @@ const Profile = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label className="block text-sm font-mono mb-2">Username</label>
+                  <label className="block text-sm font-mono mb-2 text-white">Username</label>
                   <div className="flex gap-2">
                     <Input
                       type="text"
@@ -360,7 +358,7 @@ const Profile = () => {
 
                 <div className="p-4 bg-gray-750 rounded-lg">
                   <h4 className="font-mono text-yellow-400 mb-2">Current Profile</h4>
-                  <div className="text-sm space-y-1">
+                  <div className="text-sm space-y-1 text-white">
                     <div><strong>Username:</strong> {profile?.username}</div>
                     <div><strong>Email:</strong> {user.email}</div>
                     <div><strong>Member Since:</strong> {new Date(user.created_at).toLocaleDateString()}</div>
@@ -378,7 +376,7 @@ const Profile = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label className="block text-sm font-mono mb-2">Current Password</label>
+                  <label className="block text-sm font-mono mb-2 text-white">Current Password</label>
                   <Input
                     type="password"
                     value={currentPassword}
@@ -389,7 +387,7 @@ const Profile = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-mono mb-2">New Password</label>
+                  <label className="block text-sm font-mono mb-2 text-white">New Password</label>
                   <Input
                     type="password"
                     value={newPassword}
@@ -400,7 +398,7 @@ const Profile = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-mono mb-2">Confirm New Password</label>
+                  <label className="block text-sm font-mono mb-2 text-white">Confirm New Password</label>
                   <Input
                     type="password"
                     value={confirmPassword}
