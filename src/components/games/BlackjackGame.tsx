@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useGameSave } from '@/hooks/useGameSave';
+import { useGameHistory } from '@/hooks/useGameHistory';
 
 interface Card {
   suit: string;
@@ -24,6 +25,7 @@ export const BlackjackGame: React.FC<GameProps> = ({ balance, onUpdateBalance })
   const [showDealerSecondCard, setShowDealerSecondCard] = useState(false);
 
   const { saveGameState, loadGameState, clearGameState } = useGameSave('blackjack');
+  const { recordGame } = useGameHistory();
 
   const suits = ['♠️', '♥️', '♦️', '♣️'];
   const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
@@ -184,6 +186,10 @@ export const BlackjackGame: React.FC<GameProps> = ({ balance, onUpdateBalance })
     } else {
       result = '💔 You lose';
     }
+
+    // Record the finished game in history
+    const isWin = winAmount > 0;
+    recordGame('blackjack', betAmount, winAmount, isWin, result);
 
     setGameResult(result);
     if (winAmount > 0) {
