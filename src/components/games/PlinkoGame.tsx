@@ -13,7 +13,6 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
   const [betAmount, setBetAmount] = useState(10);
   const sceneRef = useRef<HTMLDivElement>(null);
 
-  // We'll create the engine and store it in a ref once Matter is available
   const engine = useRef<any>(null);
   const [isDropping, setIsDropping] = useState(false);
 
@@ -55,7 +54,8 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     const spacing = 50;
     for (let row = 0; row < pegRows; row++) {
       for (let col = 0; col < row + 1; col++) {
-        const x = 100 + col * spacing + (row % 2 === 0 ? spacing / 2 : 0);
+        // stagger odd rows instead of even
+        const x = 100 + col * spacing + (row % 2 !== 0 ? spacing / 2 : 0);
         const y = 100 + row * spacing;
         const peg = Matter.Bodies.circle(x, y, 5, {
           isStatic: true,
@@ -90,10 +90,16 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     const Matter = (window as any).Matter;
     if (!Matter || !engine.current) return;
     if (betAmount > balance || isDropping) return;
+
     setIsDropping(true);
     onUpdateBalance(-betAmount);
 
-    const ball = Matter.Bodies.circle(350, 20, 10, {
+    // drop ball centered over pegs
+    const pegRows = 10;
+    const spacing = 50;
+    const ballDropX = 100 + ((pegRows - 1) * spacing) / 2;
+
+    const ball = Matter.Bodies.circle(ballDropX, 20, 8, {
       restitution: 0.5,
       render: { fillStyle: '#facc15' },
       label: 'plinko-ball',
@@ -111,7 +117,7 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
       if (multiplier >= 1) onUpdateBalance(payout);
 
       setIsDropping(false);
-      Matter.World.remove(engine.current.world, ball); // remove ball after done
+      Matter.World.remove(engine.current.world, ball);
     }, 5000);
   };
 
