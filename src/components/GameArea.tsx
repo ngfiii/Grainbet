@@ -1,7 +1,7 @@
 
 import type { Game } from '@/pages/Index';
 import DashboardGame from '@/components/games/DashboardGame';
-import { DiceGame } from '@/components/games/DiceGame';
+import DiceGame from '@/components/games/DiceGame';
 import { LimboGame } from '@/components/games/LimboGame';
 import { BlackjackGame } from '@/components/games/BlackjackGame';
 import { MinesGame } from '@/components/games/MinesGame';
@@ -26,7 +26,7 @@ export const GameArea: React.FC<GameAreaProps> = ({
     
     switch (currentGame) {
       case 'dashboard': return <DashboardGame {...gameProps} onGameSelect={onGameSelect} />;
-      case 'dice': return <DiceGame {...gameProps} />;
+      case 'dice': return <DiceGame />;
       case 'limbo': return <LimboGame {...gameProps} />;
       case 'blackjack': return <BlackjackGame {...gameProps} />;
       case 'mines': return <MinesGame {...gameProps} />;

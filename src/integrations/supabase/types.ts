@@ -253,28 +253,8 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
-      admin_create_fake_users: {
-        Args: { user_count?: number }
-        Returns: number
-      }
-      admin_delete_all_users: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
       admin_give_coins_to_all: {
         Args: { coin_amount: number }
-        Returns: number
-      }
-      admin_multiply_all_balances: {
-        Args: { multiplier: number }
-        Returns: number
-      }
-      admin_nuclear_reset: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      admin_randomize_all_balances: {
-        Args: { min_balance?: number; max_balance?: number }
         Returns: number
       }
       admin_reset_all_stats: {

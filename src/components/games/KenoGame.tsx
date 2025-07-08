@@ -84,17 +84,21 @@ export const KenoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
     setMatches(matchCount);
     
     const multiplier = getMultiplier(selectedNumbers.size, matchCount);
+    const isWin = multiplier > 0;
+    let payout = 0;
     
-    if (multiplier > 0) {
+    if (isWin) {
       const winAmount = betAmount * multiplier;
       setLastWin(winAmount);
       onUpdateBalance(winAmount);
       setGameResult(`🎉 ${matchCount} matches! You win!`);
-      await recordGame('keno', betAmount, winAmount, true, multiplier);
+      payout = winAmount;
     } else {
       setGameResult(`💔 ${matchCount} matches. Better luck next time!`);
-      await recordGame('keno', betAmount, 0, false, 0);
     }
+
+    // Record the game in history
+    await recordGame('keno', betAmount, payout, isWin, isWin ? multiplier : undefined);
     
     setGameStatus('finished');
   };
