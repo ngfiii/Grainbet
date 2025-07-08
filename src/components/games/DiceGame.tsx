@@ -1,8 +1,8 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
+import { useGameHistory } from '@/hooks/useGameHistory';
 
 interface GameProps {
   balance: number;
@@ -16,6 +16,7 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
   const [result, setResult] = useState<number | null>(null);
   const [isRolling, setIsRolling] = useState(false);
   const [lastWin, setLastWin] = useState<number | null>(null);
+  const { recordGame } = useGameHistory();
 
   const calculateMultiplier = () => {
     const targetNum = target[0];
@@ -32,14 +33,11 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
   };
 
   const roll = async () => {
-    if (betAmount < 10) {
-      return;
-    }
+    if (betAmount < 10) return;
     if (betAmount > balance) return;
     
     setIsRolling(true);
     setLastWin(null);
-    
     onUpdateBalance(-betAmount);
     
     await new Promise(resolve => setTimeout(resolve, 300));
@@ -54,8 +52,11 @@ export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
       const profit = betAmount * (multiplier - 1);
       setLastWin(profit);
       onUpdateBalance(profit);
+      recordGame('dice', betAmount, betAmount + profit, true, multiplier);
+    } else {
+      recordGame('dice', betAmount, 0, false, rollResult);
     }
-    
+
     setIsRolling(false);
   };
 
