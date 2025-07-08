@@ -1,5 +1,4 @@
 import React, { useRef, useEffect, useState } from 'react';
-import Matter from 'matter-js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -11,16 +10,16 @@ interface GameProps {
 const multipliers = [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000];
 
 export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
+  const Matter = (window as any).Matter;
   const [betAmount, setBetAmount] = useState(10);
   const sceneRef = useRef<HTMLDivElement>(null);
-  const engine = useRef<Matter.Engine>();
+  const engine = useRef<any>();
   const [isDropping, setIsDropping] = useState(false);
-  const [binsX, setBinsX] = useState<number[]>([]); // store bin x positions for labels
+  const [binsX, setBinsX] = useState<number[]>([]);
 
   useEffect(() => {
-    if (!sceneRef.current) return;
+    if (!sceneRef.current || !Matter) return;
 
-    // Create engine and renderer
     engine.current = Matter.Engine.create();
 
     const render = Matter.Render.create({
@@ -39,19 +38,17 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     Matter.World.clear(world);
     Matter.Engine.clear(engine.current);
 
-    // Walls
     const walls = [
-      Matter.Bodies.rectangle(350, 0, 700, 20, { isStatic: true }), // top
-      Matter.Bodies.rectangle(350, 600, 700, 20, { isStatic: true }), // bottom
-      Matter.Bodies.rectangle(0, 300, 20, 600, { isStatic: true }), // left
-      Matter.Bodies.rectangle(700, 300, 20, 600, { isStatic: true }), // right
+      Matter.Bodies.rectangle(350, 0, 700, 20, { isStatic: true }),
+      Matter.Bodies.rectangle(350, 600, 700, 20, { isStatic: true }),
+      Matter.Bodies.rectangle(0, 300, 20, 600, { isStatic: true }),
+      Matter.Bodies.rectangle(700, 300, 20, 600, { isStatic: true }),
     ];
     Matter.World.add(world, walls);
 
-    // Pegs (triangular lattice)
-    const pegRows = 13; // Increase peg rows for more like Rainbet
+    const pegRows = 13;
     const spacingX = 50;
-    const spacingY = 43; // vertical spacing less than horizontal for triangle grid
+    const spacingY = 43;
 
     for (let row = 0; row < pegRows; row++) {
       const pegsInRow = row + 1;
@@ -64,16 +61,15 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
         const peg = Matter.Bodies.circle(x, y, 7, {
           isStatic: true,
           render: { fillStyle: '#facc15' },
-          collisionFilter: { group: -1 }, // avoid ball sticking issues
+          collisionFilter: { group: -1 },
         });
         Matter.World.add(world, peg);
       }
     }
 
-    // Bins + bin walls at bottom
     const binCount = multipliers.length;
     const binWidth = 700 / binCount;
-    const binWalls: Matter.Body[] = [];
+    const binWalls: any[] = [];
     const binPositions: number[] = [];
 
     for (let i = 0; i <= binCount; i++) {
@@ -89,7 +85,6 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
 
     Matter.World.add(world, binWalls);
 
-    // Ground floor for balls to rest on
     const ground = Matter.Bodies.rectangle(350, 620, 700, 40, {
       isStatic: true,
       render: { visible: false },
@@ -101,23 +96,21 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
     Matter.Engine.run(engine.current);
     Matter.Render.run(render);
 
-    // Cleanup
     return () => {
       Matter.Render.stop(render);
       Matter.World.clear(world);
       Matter.Engine.clear(engine.current);
       render.canvas.remove();
     };
-  }, []);
+  }, [Matter]);
 
   const dropBall = () => {
-    if (!engine.current) return;
+    if (!engine.current || !Matter) return;
     if (betAmount > balance || isDropping) return;
 
     setIsDropping(true);
     onUpdateBalance(-betAmount);
 
-    // Drop ball centered over the peg field
     const ballX = 50 + (multipliers.length * 50) / 2;
     const ballRadius = 10;
 
@@ -132,7 +125,6 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
 
     Matter.World.add(engine.current.world, ball);
 
-    // Wait ~6 seconds for ball to settle
     setTimeout(() => {
       const x = ball.position.x;
       const binIndex = Math.floor((x / 700) * multipliers.length);
@@ -171,7 +163,6 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
         <div className="mb-6 border border-gray-600 rounded-xl overflow-hidden relative">
           <div ref={sceneRef} className="w-full h-[600px]" />
 
-          {/* Render multiplier labels under bins */}
           <div
             style={{
               position: 'absolute',
