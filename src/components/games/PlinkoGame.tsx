@@ -1,5 +1,4 @@
 import React, { useRef, useEffect, useState } from 'react';
-import Matter from 'matter-js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -13,10 +12,20 @@ const multipliers = [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 10
 export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
   const [betAmount, setBetAmount] = useState(10);
   const sceneRef = useRef<HTMLDivElement>(null);
-  const engine = useRef(Matter.Engine.create());
+
+  // We'll create the engine and store it in a ref once Matter is available
+  const engine = useRef<any>(null);
   const [isDropping, setIsDropping] = useState(false);
 
   useEffect(() => {
+    const Matter = (window as any).Matter;
+    if (!Matter) {
+      console.error('Matter.js not loaded');
+      return;
+    }
+
+    engine.current = Matter.Engine.create();
+
     const render = Matter.Render.create({
       element: sceneRef.current!,
       engine: engine.current,
@@ -78,6 +87,8 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
   }, []);
 
   const dropBall = () => {
+    const Matter = (window as any).Matter;
+    if (!Matter || !engine.current) return;
     if (betAmount > balance || isDropping) return;
     setIsDropping(true);
     onUpdateBalance(-betAmount);
@@ -90,7 +101,6 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
 
     Matter.World.add(engine.current.world, ball);
 
-    // Wait and calculate result
     setTimeout(() => {
       const x = ball.position.x;
       const binIndex = Math.floor((x / 700) * multipliers.length);
@@ -101,6 +111,7 @@ export const PlinkoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) =>
       if (multiplier >= 1) onUpdateBalance(payout);
 
       setIsDropping(false);
+      Matter.World.remove(engine.current.world, ball); // remove ball after done
     }, 5000);
   };
 
