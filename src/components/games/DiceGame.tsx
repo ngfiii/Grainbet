@@ -1,163 +1,156 @@
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6 } from 'lucide-react';
+import { useBalance } from '@/hooks/useBalance';
 import { useGameHistory } from '@/hooks/useGameHistory';
+import { toast } from 'sonner';
 
-interface GameProps {
-  balance: number;
-  onUpdateBalance: (amount: number) => void;
-}
+const diceIcons = [Dice1, Dice2, Dice3, Dice4, Dice5, Dice6];
 
-export const DiceGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
+const DiceGame = () => {
   const [betAmount, setBetAmount] = useState(10);
-  const [targetNumber, setTargetNumber] = useState(50);
-  const [rollOver, setRollOver] = useState(true);
-  const [result, setResult] = useState<number | null>(null);
+  const [targetNumber, setTargetNumber] = useState(4);
   const [isRolling, setIsRolling] = useState(false);
-  const [lastWin, setLastWin] = useState<number | null>(null);
+  const [diceResult, setDiceResult] = useState<number | null>(null);
+  const [isWin, setIsWin] = useState<boolean | null>(null);
+  const { balance, updateBalance } = useBalance();
   const { recordGame } = useGameHistory();
 
-  const winChance = rollOver ? (100 - targetNumber) : (targetNumber - 1);
-  const multiplier = Math.max(1.01, 99 / winChance);
+  const rollDice = async () => {
+    if (betAmount > balance) {
+      toast.error('Insufficient balance!');
+      return;
+    }
 
-  const roll = async () => {
-    if (betAmount > balance || isRolling) return;
+    if (betAmount <= 0) {
+      toast.error('Please enter a valid bet amount!');
+      return;
+    }
 
     setIsRolling(true);
-    setResult(null);
-    setLastWin(null);
-
-    onUpdateBalance(-betAmount);
+    setDiceResult(null);
+    setIsWin(null);
 
     // Simulate rolling animation
-    for (let i = 0; i < 10; i++) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      setResult(Math.floor(Math.random() * 100) + 1);
-    }
+    const rollAnimation = setInterval(() => {
+      setDiceResult(Math.floor(Math.random() * 6) + 1);
+    }, 100);
 
-    const finalResult = Math.floor(Math.random() * 100) + 1;
-    setResult(finalResult);
-
-    const isWin = rollOver ? finalResult > targetNumber : finalResult < targetNumber;
-    
-    let payout = 0;
-    if (isWin) {
-      payout = betAmount * multiplier;
-      setLastWin(payout);
-      onUpdateBalance(payout);
-    }
-
-    // Record the game in history
-    await recordGame('dice', betAmount, payout, isWin, isWin ? multiplier : undefined);
-
-    setIsRolling(false);
+    setTimeout(async () => {
+      clearInterval(rollAnimation);
+      const finalResult = Math.floor(Math.random() * 6) + 1;
+      setDiceResult(finalResult);
+      
+      const win = finalResult >= targetNumber;
+      setIsWin(win);
+      
+      const payout = win ? betAmount * 2 : 0;
+      const newBalance = balance - betAmount + payout;
+      
+      await updateBalance(newBalance);
+      await recordGame('dice', betAmount, payout, win);
+      
+      if (win) {
+        toast.success(`You won ${payout} coins!`);
+      } else {
+        toast.error(`You lost ${betAmount} coins!`);
+      }
+      
+      setIsRolling(false);
+    }, 2000);
   };
 
+  const DiceIcon = diceResult ? diceIcons[diceResult - 1] : Dice1;
+
   return (
-    <div className="max-w-2xl mx-auto p-4">
-      <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-2xl">
-        <h2 className="text-3xl font-bold text-yellow-400 mb-6 text-center font-mono">🎲 Dice</h2>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-4">
+      <Card className="w-full max-w-md bg-gray-800 border-gray-700">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold text-red-400">🎲 Dice Game</CardTitle>
+          <CardDescription className="text-gray-300">
+            Roll the dice and bet on the outcome!
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="text-center">
+            <p className="text-sm text-gray-400 mb-2">Your Balance</p>
+            <p className="text-2xl font-bold text-green-400">{balance} coins</p>
+          </div>
 
-        <div className="mb-6">
-          <label className="block text-sm font-medium mb-2 font-mono">Bet Amount</label>
-          <Input
-            type="number"
-            value={betAmount}
-            onChange={(e) => setBetAmount(Math.max(1, parseInt(e.target.value) || 1))}
-            className="bg-gray-700 border-gray-600 text-white transition-all duration-200 focus:ring-2 focus:ring-yellow-400 font-mono"
-          />
-        </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Bet Amount
+              </label>
+              <Input
+                type="number"
+                value={betAmount}
+                onChange={(e) => setBetAmount(Number(e.target.value))}
+                className="bg-gray-700 border-gray-600 text-white"
+                min="1"
+                max={balance}
+                disabled={isRolling}
+              />
+            </div>
 
-        <div className="mb-6">
-          <label className="block text-sm font-medium mb-2 font-mono">Target Number</label>
-          <Input
-            type="number"
-            min="2"
-            max="98"
-            value={targetNumber}
-            onChange={(e) => setTargetNumber(Math.max(2, Math.min(98, parseInt(e.target.value) || 50)))}
-            className="bg-gray-700 border-gray-600 text-white transition-all duration-200 focus:ring-2 focus:ring-yellow-400 font-mono"
-          />
-        </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Target Number (win if dice ≥ this number)
+              </label>
+              <Input
+                type="number"
+                value={targetNumber}
+                onChange={(e) => setTargetNumber(Number(e.target.value))}
+                className="bg-gray-700 border-gray-600 text-white"
+                min="1"
+                max="6"
+                disabled={isRolling}
+              />
+            </div>
+          </div>
 
-        <div className="mb-6 flex gap-2">
-          <Button
-            onClick={() => setRollOver(true)}
-            variant={rollOver ? "default" : "outline"}
-            className={`flex-1 font-mono transition-all duration-200 ${
-              rollOver ? 'bg-green-600 hover:bg-green-700 text-white' : 'border-green-600 text-green-400 hover:bg-green-600 hover:text-white'
-            }`}
-          >
-            Roll Over {targetNumber}
-          </Button>
-          <Button
-            onClick={() => setRollOver(false)}
-            variant={!rollOver ? "default" : "outline"}
-            className={`flex-1 font-mono transition-all duration-200 ${
-              !rollOver ? 'bg-red-600 hover:bg-red-700 text-white' : 'border-red-600 text-red-400 hover:bg-red-600 hover:text-white'
-            }`}
-          >
-            Roll Under {targetNumber}
-          </Button>
-        </div>
-
-        <div className="mb-6 text-center bg-gradient-to-br from-gray-900 to-gray-700 p-8 rounded-xl border-2 border-gray-600 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-t from-transparent via-yellow-400/5 to-transparent"></div>
-          <div className="text-6xl font-bold mb-2 font-mono relative z-10">
-            {result !== null ? (
-              <span className={`transition-all duration-300 ${
-                result !== null && ((rollOver && result > targetNumber) || (!rollOver && result < targetNumber))
-                  ? 'text-green-400 animate-bounce' 
-                  : result !== null 
-                  ? 'text-red-400' 
-                  : 'text-yellow-400'
-              }`}>
-                {result}
-              </span>
-            ) : (
-              <span className="text-gray-500">?</span>
+          <div className="text-center space-y-4">
+            <div className="flex justify-center">
+              <DiceIcon 
+                size={80} 
+                className={`${isRolling ? 'animate-spin' : ''} ${
+                  isWin === true ? 'text-green-400' : 
+                  isWin === false ? 'text-red-400' : 'text-white'
+                }`}
+              />
+            </div>
+            
+            {diceResult && !isRolling && (
+              <div className="space-y-2">
+                <p className="text-lg">You rolled: <span className="font-bold">{diceResult}</span></p>
+                <p className="text-lg">Target: <span className="font-bold">{targetNumber}+</span></p>
+                <p className={`text-xl font-bold ${isWin ? 'text-green-400' : 'text-red-400'}`}>
+                  {isWin ? `You Win! +${betAmount * 2} coins` : `You Lose! -${betAmount} coins`}
+                </p>
+              </div>
             )}
           </div>
-          
-          {isRolling && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-4xl animate-spin">🎲</div>
-            </div>
-          )}
-        </div>
 
-        <div className="mb-6 text-center bg-gray-700/50 p-4 rounded-lg border border-gray-600">
-          <div className="text-lg text-gray-300 mb-1 font-mono">Win Chance: {winChance.toFixed(2)}%</div>
-          <div className="text-base text-gray-400 font-mono">Multiplier: {multiplier.toFixed(2)}x</div>
-          <div className="text-base text-gray-400 font-mono">Potential win: {(betAmount * multiplier).toFixed(0)} coins</div>
-        </div>
+          <Button
+            onClick={rollDice}
+            disabled={isRolling || betAmount > balance || betAmount <= 0}
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 text-lg"
+          >
+            {isRolling ? 'Rolling...' : 'Roll Dice'}
+          </Button>
 
-        {!isRolling && result !== null && (
-          <div className="mb-6 text-center animate-fade-in">
-            <div
-              className={`text-2xl font-bold mb-2 transition-all duration-300 font-mono ${
-                (rollOver && result > targetNumber) || (!rollOver && result < targetNumber)
-                  ? 'text-green-400 animate-bounce' 
-                  : 'text-red-400'
-              }`}
-            >
-              {(rollOver && result > targetNumber) || (!rollOver && result < targetNumber) ? '🎉 WIN!' : '💔 LOSE!'}
-            </div>
-            {lastWin && lastWin > 0 && (
-              <div className="text-lg text-green-400 animate-pulse font-mono">+{lastWin.toFixed(0)} coins</div>
-            )}
+          <div className="text-center text-sm text-gray-400">
+            <p>Win chance depends on target number:</p>
+            <p>Target 1: 100% chance (1x payout)</p>
+            <p>Target 2-6: Decreasing chance (2x payout)</p>
           </div>
-        )}
-
-        <Button
-          onClick={roll}
-          disabled={betAmount > balance || isRolling}
-          className="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-bold py-3 transition-all duration-200 hover:scale-105 disabled:opacity-50 font-mono"
-        >
-          {isRolling ? 'Rolling... 🎲' : `Roll Dice (${betAmount} coins)`}
-        </Button>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
+
+export default DiceGame;
