@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { useGameHistory } from '@/hooks/useGameHistory';
 
 interface GameProps {
   balance: number;
@@ -18,7 +17,6 @@ export const KenoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
   const [matches, setMatches] = useState(0);
   const [gameResult, setGameResult] = useState('');
   const [lastWin, setLastWin] = useState<number | null>(null);
-  const { recordGame } = useGameHistory();
 
   const MAX_NUMBERS = 40;
   const MAX_PICKS = 10;
@@ -84,21 +82,15 @@ export const KenoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
     setMatches(matchCount);
     
     const multiplier = getMultiplier(selectedNumbers.size, matchCount);
-    const isWin = multiplier > 0;
-    let payout = 0;
     
-    if (isWin) {
+    if (multiplier > 0) {
       const winAmount = betAmount * multiplier;
       setLastWin(winAmount);
       onUpdateBalance(winAmount);
       setGameResult(`🎉 ${matchCount} matches! You win!`);
-      payout = winAmount;
     } else {
       setGameResult(`💔 ${matchCount} matches. Better luck next time!`);
     }
-
-    // Record the game in history
-    await recordGame('keno', betAmount, payout, isWin, isWin ? multiplier : undefined);
     
     setGameStatus('finished');
   };
