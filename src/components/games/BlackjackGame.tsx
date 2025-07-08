@@ -141,6 +141,9 @@ export const BlackjackGame: React.FC<GameProps> = ({ balance, onUpdateBalance })
       setGameStatus('finished');
       setGameResult('💔 BUST! You lose');
       clearGameState();
+
+      // Record LOSS game for bust
+      recordGame('blackjack', betAmount, 0, false, calculateHandValue(newPlayerHand));
     }
   };
 
@@ -168,34 +171,46 @@ export const BlackjackGame: React.FC<GameProps> = ({ balance, onUpdateBalance })
 
     let result = '';
     let winAmount = 0;
+    let payout = 0;
+    let won = false;
 
     if (playerValue > 21) {
       result = '💔 BUST! You lose';
+      payout = 0;
+      won = false;
     } else if (dealerValue > 21) {
       result = '🎉 Dealer busts! You win!';
       winAmount = betAmount * 2;
+      payout = winAmount;
+      won = true;
     } else if (playerValue === 21 && finalPlayerHand.length === 2) {
       result = '🎉 BLACKJACK!';
       winAmount = betAmount * 2.5;
+      payout = winAmount;
+      won = true;
     } else if (playerValue > dealerValue) {
       result = '🎉 You win!';
       winAmount = betAmount * 2;
+      payout = winAmount;
+      won = true;
     } else if (playerValue === dealerValue) {
       result = '🤝 Push (tie)';
-      winAmount = betAmount;
+      payout = betAmount;
+      won = true; // push counts as win in payout sense
     } else {
       result = '💔 You lose';
+      payout = 0;
+      won = false;
     }
-
-    // Record the finished game in history
-    const isWin = winAmount > 0;
-    recordGame('blackjack', betAmount, winAmount, isWin, result);
 
     setGameResult(result);
     if (winAmount > 0) {
       setLastWin(winAmount);
       onUpdateBalance(winAmount);
     }
+
+    // Record game in history exactly like dice does
+    recordGame('blackjack', betAmount, payout, won, playerValue);
 
     clearGameState();
   };
