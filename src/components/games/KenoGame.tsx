@@ -1,8 +1,8 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useGameHistory } from '@/hooks/useGameHistory';
 
 interface GameProps {
   balance: number;
@@ -17,6 +17,7 @@ export const KenoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
   const [matches, setMatches] = useState(0);
   const [gameResult, setGameResult] = useState('');
   const [lastWin, setLastWin] = useState<number | null>(null);
+  const { recordGameHistory } = useGameHistory();
 
   const MAX_NUMBERS = 40;
   const MAX_PICKS = 10;
@@ -83,14 +84,21 @@ export const KenoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
     
     const multiplier = getMultiplier(selectedNumbers.size, matchCount);
     
+    let payout = 0;
+    let isWin = false;
+    
     if (multiplier > 0) {
-      const winAmount = betAmount * multiplier;
-      setLastWin(winAmount);
-      onUpdateBalance(winAmount);
+      payout = betAmount * multiplier;
+      setLastWin(payout - betAmount);
+      onUpdateBalance(payout);
       setGameResult(`🎉 ${matchCount} matches! You win!`);
+      isWin = true;
     } else {
       setGameResult(`💔 ${matchCount} matches. Better luck next time!`);
     }
+
+    // Record game history
+    await recordGameHistory('keno', betAmount, payout, isWin, multiplier);
     
     setGameStatus('finished');
   };
@@ -194,9 +202,9 @@ export const KenoGame: React.FC<GameProps> = ({ balance, onUpdateBalance }) => {
         {gameStatus === 'finished' && (
           <div className="text-center">
             <div className="text-2xl font-bold mb-4">{gameResult}</div>
-            {lastWin && (
+            {lastWin && lastWin > 0 && (
               <div className="text-lg text-green-400 mb-4">
-                +{lastWin.toFixed(0)} coins
+                +{lastWin.toFixed(0)} coins profit
               </div>
             )}
             <Button onClick={newGame} className="bg-yellow-600 hover:bg-yellow-700 text-black font-bold">

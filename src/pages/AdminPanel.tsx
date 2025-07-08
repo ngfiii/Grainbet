@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Trash2, Download, Key, Clock, Settings, Users, UserPlus, DollarSign, BarChart3, Shield, Database } from 'lucide-react';
+import { Trash2, Download, Key, Clock, Settings, Users, UserPlus, DollarSign, BarChart3, Shield, Database, Zap, Crown, Target, Flame } from 'lucide-react';
 
 interface CoinKey {
   id: string;
@@ -247,6 +247,97 @@ const AdminPanel = () => {
       fetchUserProfiles();
       setNewUserBalance(0);
       setSelectedUserId('');
+    }
+    setLoading(false);
+  };
+
+  // New overpowered admin functions
+  const giveCoinsToAll = async (amount: number) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_give_coins_to_all', {
+        coin_amount: amount
+      });
+      
+      if (error) throw error;
+      
+      toast.success(`🎉 Gave ${amount} coins to ${data} users!`);
+      fetchUserProfiles();
+    } catch (error) {
+      toast.error('Failed to give coins to all users');
+      console.error(error);
+    }
+    setLoading(false);
+  };
+
+  const setAllBalances = async (amount: number) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_bulk_update_balance', {
+        target_balance: amount
+      });
+      
+      if (error) throw error;
+      
+      toast.success(`💰 Set ${data} user balances to ${amount} coins!`);
+      fetchUserProfiles();
+    } catch (error) {
+      toast.error('Failed to set all balances');
+      console.error(error);
+    }
+    setLoading(false);
+  };
+
+  const resetAllStats = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_reset_all_stats');
+      
+      if (error) throw error;
+      
+      toast.success(`🔄 Reset stats for ${data} users!`);
+      fetchUserProfiles();
+    } catch (error) {
+      toast.error('Failed to reset all stats');
+      console.error(error);
+    }
+    setLoading(false);
+  };
+
+  const clearGameHistory = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_clear_game_history');
+      
+      if (error) throw error;
+      
+      toast.success(`🗑️ Deleted ${data} game history records!`);
+    } catch (error) {
+      toast.error('Failed to clear game history');
+      console.error(error);
+    }
+    setLoading(false);
+  };
+
+  const createMegaKeys = async () => {
+    setLoading(true);
+    const megaKeys = [
+      { code: generateRandomString(12), amount: 1000000 },
+      { code: generateRandomString(12), amount: 500000 },
+      { code: generateRandomString(12), amount: 100000 },
+      { code: generateRandomString(12), amount: 50000 },
+      { code: generateRandomString(12), amount: 10000 }
+    ];
+
+    const { error } = await supabase
+      .from('coin_keys')
+      .insert(megaKeys);
+
+    if (error) {
+      toast.error('Failed to create mega keys');
+    } else {
+      toast.success('🚀 Created 5 MEGA keys! (1M, 500K, 100K, 50K, 10K)');
+      fetchCoinKeys();
     }
     setLoading(false);
   };
@@ -609,6 +700,7 @@ const AdminPanel = () => {
             </Card>
           </TabsContent>
 
+          {/* Enhanced Admin Tools Tab with Overpowered Features */}
           <TabsContent value="tools" className="space-y-4 md:space-y-6">
             <Card className="bg-gray-800 border-gray-700">
               <CardHeader>
@@ -621,6 +713,77 @@ const AdminPanel = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* OVERPOWERED SECTION */}
+                <div className="p-4 bg-gradient-to-r from-red-900/20 to-purple-900/20 rounded-lg border border-red-600/50">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Crown className="w-5 h-5 text-red-400" />
+                    <h4 className="font-mono text-red-400 text-lg font-bold">🔥 OVERPOWERED ZONE 🔥</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Button
+                      onClick={() => giveCoinsToAll(1000000)}
+                      disabled={loading}
+                      className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-black font-bold"
+                    >
+                      <Crown className="w-4 h-4 mr-2" />
+                      Give 1M Coins to ALL
+                    </Button>
+                    <Button
+                      onClick={() => giveCoinsToAll(100000)}
+                      disabled={loading}
+                      className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold"
+                    >
+                      <Zap className="w-4 h-4 mr-2" />
+                      Give 100K Coins to ALL
+                    </Button>
+                    <Button
+                      onClick={() => setAllBalances(1000000)}
+                      disabled={loading}
+                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold"
+                    >
+                      <Target className="w-4 h-4 mr-2" />
+                      Set ALL to 1M Coins
+                    </Button>
+                    <Button
+                      onClick={createMegaKeys}
+                      disabled={loading}
+                      className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold"
+                    >
+                      <Flame className="w-4 h-4 mr-2" />
+                      Create MEGA Keys
+                    </Button>
+                  </div>
+                </div>
+
+                {/* DANGER ZONE */}
+                <div className="p-4 bg-red-900/20 rounded-lg border border-red-600">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Shield className="w-5 h-5 text-red-400" />
+                    <h4 className="font-mono text-red-400 text-base font-bold">⚠️ DANGER ZONE ⚠️</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Button
+                      onClick={resetAllStats}
+                      disabled={loading}
+                      variant="destructive"
+                      className="font-bold"
+                    >
+                      <BarChart3 className="w-4 h-4 mr-2" />
+                      Reset ALL Stats
+                    </Button>
+                    <Button
+                      onClick={clearGameHistory}
+                      disabled={loading}
+                      variant="destructive"
+                      className="font-bold"
+                    >
+                      <Database className="w-4 h-4 mr-2" />
+                      Clear Game History
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Regular Admin Tools */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* System Analytics */}
                   <div className="p-4 bg-gray-750 rounded-lg border border-gray-600">
@@ -697,11 +860,23 @@ const AdminPanel = () => {
                 <div className="p-4 bg-gray-750 rounded-lg border border-gray-600">
                   <h4 className="font-mono text-orange-400 text-sm mb-3">Quick Actions</h4>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <Button size="sm" variant="outline" className="text-xs">
-                      Clear Temp Keys
+                    <Button 
+                      onClick={() => giveCoinsToAll(10000)}
+                      disabled={loading}
+                      size="sm" 
+                      variant="outline" 
+                      className="text-xs"
+                    >
+                      Give 10K to All
                     </Button>
-                    <Button size="sm" variant="outline" className="text-xs">
-                      Reset Stats
+                    <Button 
+                      onClick={() => setAllBalances(50000)}
+                      disabled={loading}
+                      size="sm" 
+                      variant="outline" 
+                      className="text-xs"
+                    >
+                      Set All to 50K
                     </Button>
                     <Button size="sm" variant="outline" className="text-xs">
                       Maintenance Mode
